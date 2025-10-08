@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Viagens</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: #2d3748;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            margin-bottom: 24px;
+            border: 1px solid #4a5568;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #f7fafc;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #a0aec0;
+            font-size: 1.1rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 8px;
+            min-width: 140px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 153, 225, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #4a5568;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: #1a202c;
+            color: #e2e8f0;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        .grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        .table th {
+            background: #1a202c;
+            font-weight: 600;
+            color: #f7fafc;
+        }
+
+        .navbar {
+            background: rgba(45, 55, 72, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px 0;
+            margin-bottom: 32px;
+            border-radius: 16px;
+            border: 1px solid #4a5568;
+        }
+
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f7fafc;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .card {
+                padding: 24px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .btn {
+                width: 100%;
+                margin: 4px 0;
+            }
+        }
+
+        .checklist-item {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checklist-item:hover {
+            border-color: #4299e1;
+            background: #ebf8ff;
+        }
+
+        .checklist-item.selected {
+            border-color: #4299e1;
+            background: #ebf8ff;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #2d3748;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid #4a5568;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4299e1;
+        }
+
+        .stat-label {
+            color: #a0aec0;
+            margin-top: 8px;
+        }
+
+        .login-hint {
+            background: #ebf8ff;
+            border: 1px solid #4299e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2b6cb0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login Inicial -->
+    <div id="loginScreen" class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🚗 Sistema de Viagens</h1>
+                <p>Controle completo de viagens da empresa</p>
+            </div>
+            
+            <div class="grid grid-2">
+                <div style="text-align: center;">
+                    <h3 style="margin-bottom: 20px;">Portal do Motorista</h3>
+                    <p style="color: #718096; margin-bottom: 24px;">Registre suas viagens de forma rápida e simples</p>
+                    <button class="btn btn-success" onclick="showDriverPortal()">
+                        Acessar Portal do Motorista
+                    </button>
+                </div>
+                
+                <div style="text-align: center;">
+                    <h3 style="margin-bottom: 20px;">Portal do Gestor</h3>
+                    <p style="color: #718096; margin-bottom: 24px;">Gerencie motoristas e gere relatórios</p>
+                    <button class="btn" onclick="showManagerLogin()">
+                        Login do Gestor
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login do Gestor -->
+    <div id="managerLogin" class="container hidden">
+        <div class="card" style="max-width: 400px; margin: 0 auto;">
+            <div class="header">
+                <h2>Login do Gestor</h2>
+            </div>
+            
+            <div id="loginAlert"></div>
+            
+            <form onsubmit="loginManager(event)">
+                <div class="form-group">
+                    <label>Usuário:</label>
+                    <input type="text" class="form-control" id="loginEmail" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Senha:</label>
+                    <input type="password" class="form-control" id="loginPassword" required>
+                </div>
+                
+                <button type="submit" class="btn" style="width: 100%;">Entrar</button>
+                <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="showLoginScreen()">Voltar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Portal do Motorista -->
+    <div id="driverPortal" class="container hidden">
+        <div class="navbar">
+            <div class="navbar-content">
+                <div class="logo">Portal do Motorista</div>
+                <button class="btn btn-secondary" onclick="showLoginScreen()">Sair</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="header">
+                <h2>Registrar Nova Viagem</h2>
+                <p>Preencha os dados da sua viagem</p>
+            </div>
+            
+            <div id="driverAlert"></div>
+            
+            <form onsubmit="registerTrip(event)">
+                <div class="grid grid-3">
+                    <div class="form-group">
+                        <label>Motorista:</label>
+                        <select class="form-control" id="driverSelect" required>
+                            <option value="">Selecione seu nome</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Veículo:</label>
+                        <select class="form-control" id="vehicleSelect" required>
+                            <option value="">Selecione o veículo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Destino:</label>
+                        <input type="text" class="form-control" id="destinationInput" placeholder="Digite o destino da viagem" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-success" style="width: 100%;">Registrar Viagem</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Portal do Gestor -->
+    <div id="managerPortal" class="container hidden">
+        <div class="navbar">
+            <div class="navbar-content">
+                <div class="logo">Portal do Gestor</div>
+                <div class="user-info">
+                    <span id="managerName">Gestor</span>
+                    <button class="btn btn-secondary" onclick="logout()">Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalTrips">0</div>
+                <div class="stat-label">Total de Viagens</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalDrivers">0</div>
+                <div class="stat-label">Motoristas Ativos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalVehicles">0</div>
+                <div class="stat-label">Veículos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="tripsToday">0</div>
+                <div class="stat-label">Viagens Hoje</div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="card">
+            <div style="border-bottom: 2px solid #e2e8f0; margin-bottom: 32px;">
+                <button class="btn tab-btn active" onclick="showTab(event, 'drivers')">Motoristas</button>
+<button class="btn tab-btn" onclick="showTab(event, 'vehicles')">Veículos</button>
+<button class="btn tab-btn" onclick="showTab(event, 'trips')">Viagens</button>
+<button class="btn tab-btn" onclick="showTab(event, 'reports')">Relatórios</button>
+
+            </div>
+            
+            <!-- Aba Motoristas -->
+            <div id="driversTab" class="tab-content">
+                <div class="grid grid-2">
+                    <div>
+                        <h3>Cadastrar Motorista</h3>
+                        <div id="driverFormAlert"></div>
+                        <form onsubmit="addDriver(event)">
+                            <div class="form-group">
+                                <label>Nome:</label>
+                                <input type="text" class="form-control" id="driverName" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">Cadastrar</button>
+                        </form>
+                    </div>
+                    
+                    <div>
+                        <h3>Motoristas Cadastrados</h3>
+                        <div id="driversList"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Aba Veículos -->
+            <div id="vehiclesTab" class="tab-content hidden">
+                <div class="grid grid-2">
+                    <div>
+                        <h3>Cadastrar Veículo</h3>
+                        <div id="vehicleFormAlert"></div>
+                        <form onsubmit="addVehicle(event)">
+                            <div class="form-group">
+                                <label>Descrição:</label>
+                                <input type="text" class="form-control" id="vehicleDescription" placeholder="Ex: Honda Civic - Prata" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Placa:</label>
+                                <input type="text" class="form-control" id="vehiclePlate" placeholder="Ex: ABC-1234" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">Cadastrar</button>
+                        </form>
+                    </div>
+                    
+                    <div>
+                        <h3>Veículos Cadastrados</h3>
+                        <div id="vehiclesList"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Aba Viagens -->
+            <div id="tripsTab" class="tab-content hidden">
+                <h3>Todas as Viagens</h3>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn" onclick="loadTrips()">Atualizar Lista</button>
+                </div>
+                <div id="tripsList"></div>
+            </div>
+            
+            <!-- Aba Relatórios -->
+            <div id="reportsTab" class="tab-content hidden">
+                <h3>Gerar Relatórios</h3>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Motorista:</label>
+                        <select class="form-control" id="reportDriverSelect">
+                            <option value="">Todos os motoristas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Período:</label>
+                        <select class="form-control" id="reportPeriod">
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30">Últimos 30 dias</option>
+                            <option value="90">Últimos 90 dias</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="generateReport()">Gerar Relatório PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+/* ===== Inicialização e caches ===== */
+let currentUser = null;
+const SUPABASE_URL = "https://ktrpeeefbemymdollecm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0cnBlZWVmYmVteW1kb2xsZWNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODI5NzgsImV4cCI6MjA3MzM1ODk3OH0.5t9MTBvvhYDJrfjMGdRboPHPQ5ju1NIbNT5nADjqPII";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let motoristasCache = [];
+let veiculosCache = [];
+let viagensCache = [];
+
+/* ===== Navegação (mantive sua lógica) ===== */
+function showLoginScreen() {
+  hideAllScreens();
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+function showDriverPortal() {
+  hideAllScreens();
+  document.getElementById('driverPortal').classList.remove('hidden');
+  loadDriverData();
+}
+
+function showManagerLogin() {
+  hideAllScreens();
+  document.getElementById('managerLogin').classList.remove('hidden');
+}
+
+function showManagerPortal() {
+  hideAllScreens();
+  document.getElementById('managerPortal').classList.remove('hidden');
+  loadManagerData();
+}
+
+function hideAllScreens() {
+  document.querySelectorAll('.container').forEach(screen => {
+    screen.classList.add('hidden');
+  });
+}
+
+/* ===== Login (mantive o admin/admin simples) ===== */
+async function loginManager(event) {
+  event.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+
+  if (email === 'admin' && password === 'admin') {
+    currentUser = { nome: 'Administrador', email: 'admin' };
+    document.getElementById('managerName').textContent = 'Administrador';
+    showManagerPortal();
+  } else {
+    showAlert('loginAlert', 'Usuário ou senha incorretos', 'error');
+  }
+}
+
+function logout() {
+  currentUser = null;
+  showLoginScreen();
+}
+
+/* ===== Carregamento de dados para portal do motorista ===== */
+async function loadDriverData() {
+  // motoristas
+  const { data: drivers, error: errDrivers } = await supabaseClient
+    .from('motoristas')
+    .select('*')
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
+
+  if (errDrivers) {
+    console.error(errDrivers);
+    showAlert('driverAlert', 'Erro ao carregar motoristas', 'error');
+    return;
+  }
+  motoristasCache = drivers || [];
+
+  const driverSelect = document.getElementById('driverSelect');
+  driverSelect.innerHTML = '<option value="">Selecione seu nome</option>';
+  motoristasCache.forEach(driver => {
+    driverSelect.innerHTML += `<option value="${driver.id}">${driver.nome}</option>`;
+  });
+
+  // veículos
+  const { data: vehicles, error: errVehicles } = await supabaseClient
+    .from('veiculos')
+    .select('*')
+    .eq('ativo', true)
+    .order('descricao', { ascending: true });
+
+  if (errVehicles) {
+    console.error(errVehicles);
+    showAlert('driverAlert', 'Erro ao carregar veículos', 'error');
+    return;
+  }
+  veiculosCache = vehicles || [];
+
+  const vehicleSelect = document.getElementById('vehicleSelect');
+  vehicleSelect.innerHTML = '<option value="">Selecione o veículo</option>';
+  veiculosCache.forEach(v => {
+    vehicleSelect.innerHTML += `<option value="${v.id}">${v.descricao} - ${v.placa}</option>`;
+  });
+}
+
+/* ===== Registrar viagem ===== */
+async function registerTrip(event) {
+  event.preventDefault();
+  const motorista_id = document.getElementById('driverSelect').value;
+  const veiculo_id = document.getElementById('vehicleSelect').value;
+  const destino = document.getElementById('destinationInput').value.trim();
+
+  if (!motorista_id || !veiculo_id || !destino) {
+    showAlert('driverAlert', 'Preencha todos os campos', 'error');
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('viagens')
+    .insert([{ motorista_id, veiculo_id, destino }]);
+
+  if (error) {
+    console.error("Erro ao registrar viagem:", error);
+    showAlert('driverAlert', 'Erro ao registrar viagem', 'error');
+    return;
+  }
+
+  showAlert('driverAlert', 'Viagem registrada com sucesso!', 'success');
+  document.querySelector('#driverPortal form').reset();
+  await loadTrips();
+  await loadStats();
+}
+
+/* ===== Manager: carregar dashboard e tabs ===== */
+async function loadManagerData() {
+  await loadDrivers();
+  await loadVehicles();
+  await loadTrips();
+  await loadStats();
+  await loadReportDrivers();
+}
+
+/* ===== Estatísticas ===== */
+async function loadStats() {
+  const { data: allTrips } = await supabaseClient.from('viagens').select('*');
+  const totalTrips = allTrips ? allTrips.length : 0;
+
+  const { data: drivers } = await supabaseClient.from('motoristas').select('*').eq('ativo', true);
+  const totalDrivers = drivers ? drivers.length : 0;
+
+  const { data: vehicles } = await supabaseClient.from('veiculos').select('*').eq('ativo', true);
+  const totalVehicles = vehicles ? vehicles.length : 0;
+
+  const todayStart = new Date();
+  todayStart.setHours(0,0,0,0);
+  const { data: tripsTodayData } = await supabaseClient
+    .from('viagens')
+    .select('id')
+    .gte('data_hora', todayStart.toISOString());
+
+  const tripsToday = tripsTodayData ? tripsTodayData.length : 0;
+
+  document.getElementById('totalTrips').textContent = totalTrips;
+  document.getElementById('totalDrivers').textContent = totalDrivers;
+  document.getElementById('totalVehicles').textContent = totalVehicles;
+  document.getElementById('tripsToday').textContent = tripsToday;
+}
+
+/* ===== Motoristas (manager) ===== */
+async function loadDrivers() {
+  const { data, error } = await supabaseClient
+    .from('motoristas')
+    .select('*')
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
+
+  if (error) {
+    console.error("Erro ao carregar motoristas:", error);
+    document.getElementById('driversList').innerHTML = '<p>Erro ao carregar motoristas.</p>';
+    return;
+  }
+
+  motoristasCache = data || [];
+  const driversList = document.getElementById('driversList');
+  driversList.innerHTML = '';
+
+  motoristasCache.forEach(driver => {
+    driversList.innerHTML += `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;">
+        <span>${driver.nome}</span>
+        <button class="btn btn-danger" onclick="removeDriver('${driver.id}')">Remover</button>
+      </div>
+    `;
+  });
+}
+
+/* ===== Cadastro / remoção Motorista ===== */
+async function addDriver(event) {
+  event.preventDefault();
+  const nome = document.getElementById('driverName').value.trim();
+  if (!nome) return;
+
+  const { data, error } = await supabaseClient.from('motoristas').insert([{ nome }]);
+  if (error) {
+    console.error(error);
+    showAlert('driverFormAlert', 'Erro ao cadastrar motorista', 'error');
+    return;
+  }
+
+  showAlert('driverFormAlert', 'Motorista cadastrado com sucesso!', 'success');
+  document.getElementById('driverName').value = '';
+  await loadDrivers();
+  await loadDriverData();
+  await loadStats();
+}
+
+async function removeDriver(id) {
+  if (!confirm('Tem certeza que deseja remover este motorista?')) return;
+  const { error } = await supabaseClient.from('motoristas')
+    .update({ ativo: false, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error(error);
+    showAlert('driverAlert', 'Erro ao remover motorista', 'error');
+    return;
+  }
+
+  showAlert('driverAlert', 'Motorista removido com sucesso', 'success');
+  await loadDrivers();
+  await loadDriverData();
+  await loadStats();
+  await loadReportDrivers();
+}
+
+/* ===== Veículos (manager) ===== */
+async function loadVehicles() {
+  const { data, error } = await supabaseClient
+    .from('veiculos')
+    .select('*')
+    .eq('ativo', true)
+    .order('descricao', { ascending: true });
+
+  if (error) {
+    console.error("Erro ao carregar veículos:", error);
+    document.getElementById('vehiclesList').innerHTML = '<p>Erro ao carregar veículos.</p>';
+    return;
+  }
+
+  veiculosCache = data || [];
+  const vehiclesList = document.getElementById('vehiclesList');
+  vehiclesList.innerHTML = '';
+
+  veiculosCache.forEach(vehicle => {
+    vehiclesList.innerHTML += `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-weight:600;">${vehicle.descricao}</div>
+          <div style="color:#718096;font-size:0.9rem;">Placa: ${vehicle.placa}</div>
+        </div>
+        <button class="btn btn-danger" onclick="removeVehicle('${vehicle.id}')">Remover</button>
+      </div>
+    `;
+  });
+}
+
+async function addVehicle(event) {
+  event.preventDefault();
+  const descricao = document.getElementById('vehicleDescription').value.trim();
+  const placa = document.getElementById('vehiclePlate').value.trim();
+  if (!descricao || !placa) return;
+
+  const { data, error } = await supabaseClient.from('veiculos').insert([{ descricao, placa }]);
+  if (error) {
+    console.error(error);
+    showAlert('vehicleFormAlert', 'Erro ao cadastrar veículo', 'error');
+    return;
+  }
+
+  showAlert('vehicleFormAlert', 'Veículo cadastrado com sucesso!', 'success');
+  document.getElementById('vehicleDescription').value = '';
+  document.getElementById('vehiclePlate').value = '';
+  await loadVehicles();
+  await loadDriverData();
+  await loadStats();
+}
+
+async function removeVehicle(id) {
+  if (!confirm('Tem certeza que deseja remover este veículo?')) return;
+  const { error } = await supabaseClient.from('veiculos')
+    .update({ ativo: false, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error(error);
+    showAlert('vehicleFormAlert', 'Erro ao remover veículo', 'error');
+    return;
+  }
+
+  showAlert('vehicleFormAlert', 'Veículo removido com sucesso', 'success');
+  await loadVehicles();
+  await loadDriverData();
+  await loadStats();
+}
+
+/* ===== Viagens: listar ===== */
+async function loadTrips() {
+  const { data: trips, error } = await supabaseClient
+    .from('viagens')
+    .select('*')
+    .order('data_hora', { ascending: false });
+
+  if (error) {
+    console.error("Erro ao carregar viagens:", error);
+    document.getElementById('tripsList').innerHTML = '<p>Erro ao carregar viagens.</p>';
+    return;
+  }
+
+  viagensCache = trips || [];
+
+  if (!motoristasCache.length) await loadDrivers();
+  if (!veiculosCache.length) await loadVehicles();
+
+  const tripsList = document.getElementById('tripsList');
+  if (!viagensCache.length) {
+    tripsList.innerHTML = '<p>Nenhuma viagem registrada.</p>';
+    return;
+  }
+
+  let html = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Data/Hora</th>
+          <th>Motorista</th>
+          <th>Veículo</th>
+          <th>Destino</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  viagensCache.forEach(trip => {
+    const date = new Date(trip.data_hora).toLocaleString('pt-BR');
+    const motorista = motoristasCache.find(m => m.id === trip.motorista_id);
+    const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
+
+    html += `
+      <tr>
+        <td>${date}</td>
+        <td>${motorista?.nome || 'N/A'}</td>
+        <td>${veiculo ? veiculo.descricao + ' - ' + veiculo.placa : 'N/A'}</td>
+        <td>${trip.destino}</td>
+        <td><span style="background:#48bb78;color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${trip.status}</span></td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table>';
+  tripsList.innerHTML = html;
+}
+
+/* ===== Relatórios ===== */
+async function loadReportDrivers() {
+  if (!motoristasCache.length) await loadDrivers();
+  const reportDriverSelect = document.getElementById('reportDriverSelect');
+  reportDriverSelect.innerHTML = '<option value="">Todos os motoristas</option>';
+  motoristasCache.forEach(d => {
+    reportDriverSelect.innerHTML += `<option value="${d.id}">${d.nome}</option>`;
+  });
+}
+
+async function generateReport() {
+  const driverId = document.getElementById('reportDriverSelect').value;
+  const period = parseInt(document.getElementById('reportPeriod').value, 10);
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - period);
+
+  let query = supabaseClient
+    .from('viagens')
+    .select('*')
+    .gte('data_hora', startDate.toISOString())
+    .order('data_hora', { ascending: true });
+
+  if (driverId) query = query.eq('motorista_id', driverId);
+
+  const { data: viagensFiltradas, error } = await query;
+  if (error) {
+    console.error("Erro ao buscar viagens para relatório:", error);
+    alert('Erro ao gerar relatório.');
+    return;
+  }
+
+  if (!viagensFiltradas || viagensFiltradas.length === 0) {
+    alert('Nenhuma viagem encontrada para o período selecionado.');
+    return;
+  }
+
+  if (!motoristasCache.length) await loadDrivers();
+  if (!veiculosCache.length) await loadVehicles();
+
+  const tableData = viagensFiltradas.map(trip => {
+    const motorista = motoristasCache.find(m => m.id === trip.motorista_id);
+    const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
+    return [
+      new Date(trip.data_hora).toLocaleString('pt-BR'),
+      motorista?.nome || 'N/A',
+      veiculo ? `${veiculo.descricao} - ${veiculo.placa}` : 'N/A',
+      trip.destino || 'N/A',
+      trip.status
+    ];
+  });
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(20);
+  doc.text('Relatório de Viagens', 20, 30);
+  doc.setFontSize(12);
+  doc.text(`Período: ${period} dias`, 20, 45);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 55);
+  if (driverId) {
+    const motorista = motoristasCache.find(m => m.id === driverId);
+    doc.text(`Motorista: ${motorista?.nome || 'N/A'}`, 20, 65);
+  }
+
+  doc.autoTable({
+    head: [['Data/Hora', 'Motorista', 'Veículo', 'Destino', 'Status']],
+    body: tableData,
+    startY: driverId ? 75 : 65,
+    styles: { fontSize: 8 }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 30;
+  doc.text('Assinatura do Motorista: ________________________________', 20, finalY);
+  doc.text('Data: ___/___/______', 20, finalY + 15);
+
+  const fileName = `relatorio-viagens-${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
+}
+
+/* ===== Util: alert ===== */
+function showAlert(containerId, message, type) {
+  const container = document.getElementById(containerId);
+  const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+  container.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+  setTimeout(() => { container.innerHTML = ''; }, 5000);
+}
+
+/* ===== Corrige tabs: showTab recebe o evento ===== */
+function showTab(e, tabName) {
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(tabName + 'Tab').classList.remove('hidden');
+  if (e && e.target) e.target.classList.add('active');
+  if (tabName === 'trips') loadTrips();
+}
+
+/* ===== Inicialização ===== */
+document.addEventListener('DOMContentLoaded', function() {
+  showLoginScreen();
+});
+</script>
