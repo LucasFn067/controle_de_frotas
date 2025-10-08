@@ -343,9 +343,11 @@
                         <label>Km Inicial:</label>
                         <input type="number" class="form-control" id="kmInicialInput" placeholder="Ex: 55000" required min="0">
                     </div>
+                    <div class="form-group">
+                         <label style="color:#2d3748;">.</label>
+                         <button type="submit" class="btn btn-success" style="width: 100%; margin: 0;">Registrar Viagem</button>
+                    </div>
                 </div>
-                
-                <button type="submit" class="btn btn-success" style="width: 100%;">Registrar Viagem</button>
             </form>
         </div>
 
@@ -484,11 +486,10 @@
     </div>
 
     <script>
-/* ===== 1. Configuração e Inicialização ===== */
+/* ===== 1. Configuração e Inicialização (MUDAR AQUI) ===== */
 let currentProfile = null; // Armazena o perfil do usuário logado (motorista ou gestor)
-const SUPABASE_URL = "https://sbanyijljmheokwsliec.supabase.co"; // <-- SUBSTITUA
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiYW55aWpsam1oZW9rd3NsaWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NjQ4NDYsImV4cCI6MjA3MzU0MDg0Nn0.IxZIU0NH_uXa9ASuUWmlR_gwOpV8w02Hb3hApVn3Xew"; // <-- SUBSTITUA
-const MANAGER_EMAIL = "SEU_EMAIL_DO_GESTOR"; // <-- SUBSTITUA
+const SUPABASE_URL = "https://sbanyijljmheokwsliec.supabase.co"; // <-- SUBSTITUA PELA SUA URL REAL
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiYW55aWpsam1oZW9rd3NsaWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NjQ4NDYsImV4cCI6MjA3MzU0MDg0Nn0.IxZIU0NH_uXa9ASuUWmlR_gwOpV8w02Hb3hApVn3Xew"; // <-- SUBSTITUA PELA SUA CHAVE ANON REAL
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -534,6 +535,7 @@ async function loginUser(event) {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
+    // *** AGORA USAMOS SUPABASE AUTH ***
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -550,7 +552,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
         return;
     }
 
-    // Tenta obter o perfil do usuário logado
+    // Tenta obter o perfil do usuário logado (usando o UUID para buscar na tabela 'perfis')
     const { data: profile, error } = await supabaseClient
         .from('perfis')
         .select('*')
@@ -559,12 +561,13 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
 
     if (error || !profile) {
         console.error("Erro ao buscar perfil:", error);
+        // Esta é a mensagem que você estava vendo: ocorre se a linha na tabela 'perfis' não existir.
         showAlert('loginAlert', 'Perfil não encontrado ou erro de permissão. Contate o suporte.', 'error');
         logout();
         return;
     }
 
-    // Roteamento baseado no perfil
+    // Roteamento baseado no perfil lido do banco de dados
     if (profile.perfil === 'gestor') {
         showManagerPortal(profile);
     } else {
@@ -636,14 +639,16 @@ async function loadDriverTrips() {
       trips.forEach(trip => {
         const date = new Date(trip.data_hora).toLocaleString('pt-BR');
         const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
+        const statusText = trip.km_final ? 'Concluída' : 'Em Andamento';
+        const kmFinalDisplay = trip.km_final ? ` / ${trip.km_final}` : '';
 
         html += `
           <tr>
             <td>${date}</td>
             <td>${veiculo ? veiculo.descricao : 'N/A'}</td>
             <td>${trip.destino}</td>
-            <td>${trip.km_inicial}</td>
-            <td><span style="background:#48bb78;color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${trip.status}</span></td>
+            <td>${trip.km_inicial}${kmFinalDisplay}</td>
+            <td><span style="background:#48bb78;color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${statusText}</span></td>
           </tr>
         `;
       });
@@ -658,6 +663,7 @@ async function registerTrip(event) {
 
     const veiculo_id = document.getElementById('vehicleSelect').value;
     const destino = document.getElementById('destinationInput').value.trim();
+    // Campo corrigido com o km_inicial
     const km_inicial = parseInt(document.getElementById('kmInicialInput').value, 10);
 
     if (!veiculo_id || !destino || isNaN(km_inicial)) {
@@ -665,7 +671,7 @@ async function registerTrip(event) {
         return;
     }
 
-    // O motorista_id é o ID do perfil, obtido do currentProfile
+    // motorista_id é o ID do perfil, lido do currentProfile após o login
     const motorista_id = currentProfile.id; 
 
     const { error } = await supabaseClient
@@ -674,7 +680,7 @@ async function registerTrip(event) {
 
     if (error) {
         console.error("Erro ao registrar viagem:", error);
-        showAlert('driverAlert', 'Erro ao registrar viagem. Verifique as permissões.', 'error');
+        showAlert('driverAlert', 'Erro ao registrar viagem. Verifique se o RLS está ativado ou se o motorista está no perfis.', 'error');
         return;
     }
 
@@ -682,14 +688,15 @@ async function registerTrip(event) {
     document.querySelector('#driverPortal form').reset();
     loadDriverTrips();
     if (document.getElementById('managerPortal').classList.contains('hidden') === false) {
-        loadStats(); // Atualiza o dashboard do gestor se ele estiver visível
+        loadStats();
     }
 }
 
 
 /* ===== 5. Portal do Gestor (Manager) - Funções de Apoio ===== */
 async function loadManagerData() {
-    await loadProfiles(); // Carrega todos os perfis (gestores e motoristas)
+    // Carrega todos os dados, pois o Gestor tem permissão total
+    await loadProfiles(); 
     await loadVehicles();
     await loadTrips();
     await loadStats();
@@ -697,7 +704,6 @@ async function loadManagerData() {
 }
 
 async function loadProfiles() {
-    // Gestor pode ver todos os perfis devido ao RLS
     const { data, error } = await supabaseClient
         .from('perfis')
         .select('*')
@@ -711,7 +717,6 @@ async function loadProfiles() {
 }
 
 async function loadStats() {
-    // O RLS do gestor permite ver todos os dados
     const { data: allTrips } = await supabaseClient.from('viagens').select('*');
     const totalTrips = allTrips ? allTrips.length : 0;
 
@@ -766,7 +771,7 @@ async function addDriverProfile(event) {
 
     const { error } = await supabaseClient
         .from('perfis')
-        .insert([{ nome, id_auth, email_auth, perfil: 'motorista' }]); // Insere como motorista
+        .insert([{ nome, id_auth, email_auth, perfil: 'motorista' }]);
 
     if (error) {
         console.error(error);
@@ -785,7 +790,7 @@ async function addDriverProfile(event) {
 async function removeDriverProfile(id) {
     if (!confirm('Tem certeza que deseja remover este motorista? (Isso não apaga a conta do Auth)')) return;
     
-    // RLS permite que o gestor atualize perfis de outros
+    // Altera o status 'ativo' no banco de dados
     const { error } = await supabaseClient.from('perfis')
         .update({ ativo: false })
         .eq('id', id);
@@ -806,7 +811,6 @@ async function removeDriverProfile(id) {
 
 /* ===== 7. Manager: Aba Veículos ===== */
 async function loadVehicles() {
-    // RLS permite que o gestor leia todos os veículos
     const { data, error } = await supabaseClient
         .from('veiculos')
         .select('*')
@@ -842,7 +846,6 @@ async function addVehicle(event) {
     const placa = document.getElementById('vehiclePlate').value.trim();
     if (!descricao || !placa) return;
 
-    // RLS permite que o gestor insira veículos
     const { error } = await supabaseClient.from('veiculos').insert([{ descricao, placa }]);
     if (error) {
         console.error(error);
@@ -860,7 +863,6 @@ async function addVehicle(event) {
 async function removeVehicle(id) {
     if (!confirm('Tem certeza que deseja remover este veículo?')) return;
     
-    // RLS permite que o gestor atualize/delete veículos
     const { error } = await supabaseClient.from('veiculos')
         .update({ ativo: false })
         .eq('id', id);
@@ -879,7 +881,6 @@ async function removeVehicle(id) {
 
 /* ===== 8. Manager: Aba Viagens (Listar) ===== */
 async function loadTrips() {
-    // RLS permite ao gestor ver todas as viagens
     const { data: trips, error } = await supabaseClient
         .from('viagens')
         .select('*')
@@ -909,6 +910,7 @@ async function loadTrips() {
               <th>Veículo</th>
               <th>Destino</th>
               <th>Km Inicial</th>
+              <th>Km Final</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -919,9 +921,8 @@ async function loadTrips() {
         const date = new Date(trip.data_hora).toLocaleString('pt-BR');
         const motorista = perfisCache.find(p => p.id === trip.motorista_id);
         const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
-        const kmColor = trip.km_final ? '#48bb78' : '#f56565';
         const statusText = trip.km_final ? 'Concluída' : 'Em Andamento';
-
+        const kmColor = trip.km_final ? '#48bb78' : '#f56565';
 
         html += `
           <tr>
@@ -930,6 +931,7 @@ async function loadTrips() {
             <td>${veiculo ? veiculo.descricao + ' - ' + veiculo.placa : 'N/A'}</td>
             <td>${trip.destino}</td>
             <td>${trip.km_inicial}</td>
+            <td>${trip.km_final || '-'}</td>
             <td><span style="background:${kmColor};color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${statusText}</span></td>
           </tr>
         `;
