@@ -134,16 +134,17 @@
             border-radius: 12px;
             margin-bottom: 24px;
             font-weight: 500;
+            color: #1a202c;
         }
 
         .alert-success {
-            background: #f0fff4;
+            background: #9ae6b4;
             color: #22543d;
             border: 1px solid #9ae6b4;
         }
 
         .alert-error {
-            background: #fed7d7;
+            background: #feb2b2;
             color: #742a2a;
             border: 1px solid #feb2b2;
         }
@@ -243,17 +244,6 @@
             color: #a0aec0;
             margin-top: 8px;
         }
-
-        .login-hint {
-            background: #ebf8ff;
-            border: 1px solid #4299e1;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-            color: #2b6cb0;
-            font-size: 0.9rem;
-        }
         
         .tab-btn {
             background: transparent;
@@ -290,7 +280,7 @@
             <form onsubmit="loginUser(event)">
                 <div class="form-group">
                     <label>E-mail:</label>
-                    <input type="email" class="form-control" id="loginEmail" required>
+                    <input type="email" class="form-control" id="loginEmail" required value="gestor@tech.com">
                 </div>
                 
                 <div class="form-group">
@@ -486,10 +476,10 @@
     </div>
 
     <script>
-/* ===== 1. Configuração e Inicialização (MUDAR AQUI) ===== */
-let currentProfile = null; // Armazena o perfil do usuário logado (motorista ou gestor)
-const SUPABASE_URL = "https://sbanyijljmheokwsliec.supabase.co"; // <-- SUBSTITUA PELA SUA URL REAL
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiYW55aWpsam1oZW9rd3NsaWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NjQ4NDYsImV4cCI6MjA3MzU0MDg0Nn0.IxZIU0NH_uXa9ASuUWmlR_gwOpV8w02Hb3hApVn3Xew"; // <-- SUBSTITUA PELA SUA CHAVE ANON REAL
+/* ===== 1. Configuração e Inicialização (CHAVES DO USUÁRIO INSERIDAS) ===== */
+let currentProfile = null; 
+const SUPABASE_URL = "https://sbanyijljmheokwsliec.supabase.co"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiYW55aWpsam1oZW9rd3NsaWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NjQ4NDYsImV4cCI6MjA3MzU0MDg0Nn0.IxZIU0NH_uXa9ASuUWmlR_gwOpV8w02Hb3hApVn3Xew"; 
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -561,7 +551,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
 
     if (error || !profile) {
         console.error("Erro ao buscar perfil:", error);
-        // Esta é a mensagem que você estava vendo: ocorre se a linha na tabela 'perfis' não existir.
+        // Esta é a mensagem que você estava vendo: ocorre se a linha na tabela 'perfis' não existir ou RLS estiver off.
         showAlert('loginAlert', 'Perfil não encontrado ou erro de permissão. Contate o suporte.', 'error');
         logout();
         return;
