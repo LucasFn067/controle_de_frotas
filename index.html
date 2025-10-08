@@ -121,8 +121,8 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         }
 
-        .grid-3 {
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         }
 
         .hidden {
@@ -217,27 +217,6 @@
             }
         }
 
-        .checklist-item {
-            background: #f7fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .checklist-item:hover {
-            border-color: #4299e1;
-            background: #ebf8ff;
-        }
-
-        .checklist-item.selected {
-            border-color: #4299e1;
-            background: #ebf8ff;
-            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-        }
-
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -275,21 +254,42 @@
             color: #2b6cb0;
             font-size: 0.9rem;
         }
+        
+        .tab-btn {
+            background: transparent;
+            color: #e2e8f0;
+            border: none;
+            padding: 10px 20px;
+            margin: 0;
+            border-radius: 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn.active {
+            color: #4299e1;
+            border-bottom: 2px solid #4299e1;
+            font-weight: 700;
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: #a0aec0;
+        }
     </style>
 </head>
 <body>
     <div id="loginScreen" class="container">
         <div class="card" style="max-width: 400px; margin: 0 auto;">
             <div class="header">
-                <h1>🚗 Sistema de Viagens</h1>
-                <p>Login para Motorista ou Gestor</p>
+                <h1>🚗 Login</h1>
+                <p>Acesse o Portal de Viagens</p>
             </div>
             
             <div id="loginAlert"></div>
             
             <form onsubmit="loginUser(event)">
                 <div class="form-group">
-                    <label>Email:</label>
+                    <label>E-mail:</label>
                     <input type="email" class="form-control" id="loginEmail" required>
                 </div>
                 
@@ -299,6 +299,9 @@
                 </div>
                 
                 <button type="submit" class="btn" style="width: 100%;">Entrar</button>
+                <div style="margin-top: 20px; text-align: center; color: #a0aec0;">
+                    Se você não tem uma conta, peça ao Gestor para cadastrá-lo.
+                </div>
             </form>
         </div>
     </div>
@@ -323,13 +326,7 @@
             <div id="driverAlert"></div>
             
             <form onsubmit="registerTrip(event)">
-                <div class="grid grid-3">
-                    <div class="form-group">
-                        <label>Motorista:</label>
-                        <input type="text" class="form-control" id="driverSelect" readonly required>
-                        <input type="hidden" id="driverIdInput">
-                    </div>
-                    
+                <div class="grid grid-4">
                     <div class="form-group">
                         <label>Veículo:</label>
                         <select class="form-control" id="vehicleSelect" required>
@@ -341,15 +338,20 @@
                         <label>Destino:</label>
                         <input type="text" class="form-control" id="destinationInput" placeholder="Digite o destino da viagem" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Km Inicial:</label>
-                        <input type="number" class="form-control" id="kmInicialInput" placeholder="Ex: 12345" required>
+                        <input type="number" class="form-control" id="kmInicialInput" placeholder="Ex: 55000" required min="0">
                     </div>
                 </div>
                 
                 <button type="submit" class="btn btn-success" style="width: 100%;">Registrar Viagem</button>
             </form>
+        </div>
+
+        <div class="card">
+            <h3>Minhas Últimas Viagens</h3>
+            <div id="driverTripsList"></div>
         </div>
     </div>
 
@@ -384,33 +386,37 @@
         </div>
         
         <div class="card">
-            <div style="border-bottom: 2px solid #e2e8f0; margin-bottom: 32px;">
+            <div style="border-bottom: 2px solid #4a5568; margin-bottom: 32px;">
                 <button class="btn tab-btn active" onclick="showTab(event, 'drivers')">Motoristas</button>
-<button class="btn tab-btn" onclick="showTab(event, 'vehicles')">Veículos</button>
-<button class="btn tab-btn" onclick="showTab(event, 'trips')">Viagens</button>
-<button class="btn tab-btn" onclick="showTab(event, 'reports')">Relatórios</button>
-
+                <button class="btn tab-btn" onclick="showTab(event, 'vehicles')">Veículos</button>
+                <button class="btn tab-btn" onclick="showTab(event, 'trips')">Viagens</button>
+                <button class="btn tab-btn" onclick="showTab(event, 'reports')">Relatórios</button>
             </div>
             
             <div id="driversTab" class="tab-content">
                 <div class="grid grid-2">
                     <div>
-                        <h3>Cadastrar Motorista (Cria Usuário Supabase)</h3>
-                        <div id="driverFormAlert"></div>
-                        <form onsubmit="addDriver(event)">
+                        <h3>Cadastrar Motorista (Onboarding)</h3>
+                        <p style="color: #a0aec0; margin-bottom: 24px;">Para adicionar um novo motorista, siga estes dois passos essenciais:</p>
+                        <ol style="margin-left: 20px;">
+                            <li style="margin-bottom: 10px;">1. Crie o usuário (email e senha) no painel **Authentication** do Supabase.</li>
+                            <li style="margin-bottom: 10px;">2. Insira o perfil do motorista na tabela abaixo, usando o ID e email gerados no passo 1.</li>
+                        </ol>
+                        <div id="driverFormAlert" class="alert-error" style="margin-top: 20px; display: none;"></div>
+                        <form onsubmit="addDriverProfile(event)">
                             <div class="form-group">
                                 <label>Nome:</label>
                                 <input type="text" class="form-control" id="driverName" required>
                             </div>
                             <div class="form-group">
-                                <label>Email (Login):</label>
-                                <input type="email" class="form-control" id="driverEmail" required>
+                                <label>ID Auth (UUID do Supabase Auth):</label>
+                                <input type="text" class="form-control" id="driverIdAuth" placeholder="Ex: a1b2c3d4-..." required>
                             </div>
                             <div class="form-group">
-                                <label>Senha Inicial:</label>
-                                <input type="password" class="form-control" id="driverPassword" required>
+                                <label>E-mail:</label>
+                                <input type="email" class="form-control" id="driverEmail" placeholder="Deve ser o mesmo do Supabase Auth" required>
                             </div>
-                            <button type="submit" class="btn btn-success">Cadastrar</button>
+                            <button type="submit" class="btn btn-success">Inserir Perfil Motorista (Passo 2)</button>
                         </form>
                     </div>
                     
@@ -478,128 +484,329 @@
     </div>
 
     <script>
-/* ===== Inicialização e caches ===== */
-let currentProfile = null; // Armazena dados do perfil (motorista/gestor) logado
-let motoristasCache = [];
-let veiculosCache = [];
+/* ===== 1. Configuração e Inicialização ===== */
+let currentProfile = null; // Armazena o perfil do usuário logado (motorista ou gestor)
+const SUPABASE_URL = "https://sbanyijljmheokwsliec.supabase.co"; // <-- SUBSTITUA
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiYW55aWpsam1oZW9rd3NsaWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NjQ4NDYsImV4cCI6MjA3MzU0MDg0Nn0.IxZIU0NH_uXa9ASuUWmlR_gwOpV8w02Hb3hApVn3Xew"; // <-- SUBSTITUA
+const MANAGER_EMAIL = "SEU_EMAIL_DO_GESTOR"; // <-- SUBSTITUA
 
-// --- Substitua com suas credenciais Supabase ---
-const SUPABASE_URL = "https://sbanyijljmheokwsliec.supabase.co"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiYW55aWpsam1oZW9rd3NsaWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NjQ4NDYsImV4cCI6MjA3MzU0MDg0Nn0.IxZIU0NH_uXa9ASuUWmlR_gwOpV8w02Hb3hApVn3Xew";
-const IS_MANAGER_EMAIL = "gestor@empresa.com"; // Email que será considerado Gestor
-
-// Inicialização
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ===== Navegação e Autenticação Supabase (RENOVADA) ===== */
-function hideAllScreens() {
-  document.querySelectorAll('.container').forEach(screen => {
-    screen.classList.add('hidden');
-  });
+let perfisCache = [];
+let veiculosCache = [];
+
+/* ===== 2. Funções de Navegação e Logout ===== */
+function showScreen(id) {
+    document.querySelectorAll('.container').forEach(screen => {
+        screen.classList.add('hidden');
+    });
+    document.getElementById(id).classList.remove('hidden');
 }
 
 function showLoginScreen() {
-  hideAllScreens();
-  document.getElementById('loginScreen').classList.remove('hidden');
+    currentProfile = null;
+    showScreen('loginScreen');
 }
 
-async function showDriverPortal(profile) {
-    if (!profile) return showLoginScreen();
-    hideAllScreens();
-    document.getElementById('driverPortal').classList.remove('hidden');
+function showDriverPortal(profile) {
+    currentProfile = profile;
     document.getElementById('driverName').textContent = profile.nome;
-    document.getElementById('driverSelect').value = profile.nome;
-    document.getElementById('driverIdInput').value = profile.id; // ID do perfil na tabela 'perfis'
-    
-    // Motorista só precisa carregar os veículos disponíveis
-    await loadVehicles(); 
-    loadVehicleSelect();
+    showScreen('driverPortal');
+    loadDriverData();
 }
 
-async function showManagerPortal(profile) {
-    if (!profile || profile.perfil !== 'gestor') return showLoginScreen();
-    hideAllScreens();
-    document.getElementById('managerPortal').classList.remove('hidden');
+function showManagerPortal(profile) {
+    currentProfile = profile;
     document.getElementById('managerName').textContent = profile.nome;
-    
-    // Carregar todos os dados do Gestor
-    await loadManagerData();
+    showScreen('managerPortal');
+    loadManagerData();
 }
 
-// Handler de mudança de estado de autenticação
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-        // Obter o perfil do usuário logado
-        const { data, error } = await supabaseClient
-            .from('perfis')
-            .select('*')
-            .eq('id_auth', session.user.id)
-            .single();
+async function logout() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) console.error("Erro ao sair:", error);
+    showLoginScreen();
+}
 
-        if (error || !data) {
-            console.error("Perfil não encontrado ou erro:", error);
-            // Se não tiver perfil, faz logout
-            await supabaseClient.auth.signOut();
-            return showLoginScreen();
-        }
-        
-        currentProfile = data;
-        
-        // Direcionar para o portal baseado no perfil
-        if (currentProfile.perfil === 'gestor') {
-            showManagerPortal(currentProfile);
-        } else {
-            showDriverPortal(currentProfile);
-        }
-    } else {
-        currentProfile = null;
-        showLoginScreen();
-    }
-});
-
-/* ===== Login com Supabase Auth ===== */
+/* ===== 3. Autenticação e Roteamento (Core do Sistema) ===== */
 async function loginUser(event) {
     event.preventDefault();
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {
         console.error("Erro no login:", error);
-        showAlert('loginAlert', error.message || 'Erro ao fazer login. Verifique email e senha.', 'error');
+        showAlert('loginAlert', 'Usuário ou senha incorretos. Verifique as credenciais.', 'error');
         return;
     }
-    
-    // O onAuthStateChange cuidará da navegação após o login bem-sucedido
-    showAlert('loginAlert', 'Login bem-sucedido!', 'success');
+    // O onAuthStateChange cuidará do redirecionamento após o login
 }
 
-async function logout() {
-    const { error } = await supabaseClient.auth.signOut();
-    if (error) console.error("Erro ao fazer logout:", error);
-    // O onAuthStateChange cuidará da navegação
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (!session) {
+        showLoginScreen();
+        return;
+    }
+
+    // Tenta obter o perfil do usuário logado
+    const { data: profile, error } = await supabaseClient
+        .from('perfis')
+        .select('*')
+        .eq('id_auth', session.user.id)
+        .single();
+
+    if (error || !profile) {
+        console.error("Erro ao buscar perfil:", error);
+        showAlert('loginAlert', 'Perfil não encontrado ou erro de permissão. Contate o suporte.', 'error');
+        logout();
+        return;
+    }
+
+    // Roteamento baseado no perfil
+    if (profile.perfil === 'gestor') {
+        showManagerPortal(profile);
+    } else {
+        showDriverPortal(profile);
+    }
+});
+
+
+/* ===== 4. Portal do Motorista (Driver) ===== */
+async function loadDriverData() {
+    // Carregar Veículos
+    const { data: vehicles, error: errVehicles } = await supabaseClient
+        .from('veiculos')
+        .select('*')
+        .eq('ativo', true)
+        .order('descricao', { ascending: true });
+
+    if (errVehicles) {
+        console.error(errVehicles);
+        showAlert('driverAlert', 'Erro ao carregar veículos', 'error');
+        return;
+    }
+    veiculosCache = vehicles || [];
+
+    const vehicleSelect = document.getElementById('vehicleSelect');
+    vehicleSelect.innerHTML = '<option value="">Selecione o veículo</option>';
+    veiculosCache.forEach(v => {
+        vehicleSelect.innerHTML += `<option value="${v.id}">${v.descricao} - ${v.placa}</option>`;
+    });
+
+    loadDriverTrips();
 }
 
-/* ===== Motoristas / Veiculos (Caches para uso em Viagens e Relatórios) ===== */
+async function loadDriverTrips() {
+    if (!currentProfile) return;
 
-async function loadDrivers() {
+    // A política RLS na tabela 'viagens' só permite ao motorista ver suas próprias viagens
+    const { data: trips, error } = await supabaseClient
+        .from('viagens')
+        .select('*')
+        .order('data_hora', { ascending: false })
+        .limit(10); // Limita às 10 últimas
+
+    if (error) {
+        console.error("Erro ao carregar minhas viagens:", error);
+        document.getElementById('driverTripsList').innerHTML = '<p>Erro ao carregar viagens.</p>';
+        return;
+    }
+
+    if (!trips.length) {
+        document.getElementById('driverTripsList').innerHTML = '<p>Você ainda não registrou nenhuma viagem.</p>';
+        return;
+    }
+
+    let html = `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Veículo</th>
+              <th>Destino</th>
+              <th>Km Inicial</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      trips.forEach(trip => {
+        const date = new Date(trip.data_hora).toLocaleString('pt-BR');
+        const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
+
+        html += `
+          <tr>
+            <td>${date}</td>
+            <td>${veiculo ? veiculo.descricao : 'N/A'}</td>
+            <td>${trip.destino}</td>
+            <td>${trip.km_inicial}</td>
+            <td><span style="background:#48bb78;color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${trip.status}</span></td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      document.getElementById('driverTripsList').innerHTML = html;
+}
+
+async function registerTrip(event) {
+    event.preventDefault();
+    if (!currentProfile) return;
+
+    const veiculo_id = document.getElementById('vehicleSelect').value;
+    const destino = document.getElementById('destinationInput').value.trim();
+    const km_inicial = parseInt(document.getElementById('kmInicialInput').value, 10);
+
+    if (!veiculo_id || !destino || isNaN(km_inicial)) {
+        showAlert('driverAlert', 'Preencha todos os campos corretamente (Km Inicial deve ser um número).', 'error');
+        return;
+    }
+
+    // O motorista_id é o ID do perfil, obtido do currentProfile
+    const motorista_id = currentProfile.id; 
+
+    const { error } = await supabaseClient
+        .from('viagens')
+        .insert([{ motorista_id, veiculo_id, destino, km_inicial }]);
+
+    if (error) {
+        console.error("Erro ao registrar viagem:", error);
+        showAlert('driverAlert', 'Erro ao registrar viagem. Verifique as permissões.', 'error');
+        return;
+    }
+
+    showAlert('driverAlert', 'Viagem registrada com sucesso!', 'success');
+    document.querySelector('#driverPortal form').reset();
+    loadDriverTrips();
+    if (document.getElementById('managerPortal').classList.contains('hidden') === false) {
+        loadStats(); // Atualiza o dashboard do gestor se ele estiver visível
+    }
+}
+
+
+/* ===== 5. Portal do Gestor (Manager) - Funções de Apoio ===== */
+async function loadManagerData() {
+    await loadProfiles(); // Carrega todos os perfis (gestores e motoristas)
+    await loadVehicles();
+    await loadTrips();
+    await loadStats();
+    await loadReportDrivers();
+}
+
+async function loadProfiles() {
+    // Gestor pode ver todos os perfis devido ao RLS
     const { data, error } = await supabaseClient
         .from('perfis')
         .select('*')
-        .eq('perfil', 'motorista')
-        .eq('ativo', true)
         .order('nome', { ascending: true });
 
     if (error) {
-        console.error("Erro ao carregar motoristas:", error);
-        return [];
+        console.error("Erro ao carregar perfis:", error);
+        return;
     }
-    motoristasCache = data || [];
-    return motoristasCache;
+    perfisCache = data || [];
 }
 
+async function loadStats() {
+    // O RLS do gestor permite ver todos os dados
+    const { data: allTrips } = await supabaseClient.from('viagens').select('*');
+    const totalTrips = allTrips ? allTrips.length : 0;
+
+    const activeDrivers = perfisCache.filter(p => p.ativo && p.perfil === 'motorista');
+    const totalDrivers = activeDrivers.length;
+
+    const { data: vehicles } = await supabaseClient.from('veiculos').select('*').eq('ativo', true);
+    const totalVehicles = vehicles ? vehicles.length : 0;
+
+    const todayStart = new Date();
+    todayStart.setHours(0,0,0,0);
+    const { data: tripsTodayData } = await supabaseClient
+        .from('viagens')
+        .select('id')
+        .gte('data_hora', todayStart.toISOString());
+
+    const tripsToday = tripsTodayData ? tripsTodayData.length : 0;
+
+    document.getElementById('totalTrips').textContent = totalTrips;
+    document.getElementById('totalDrivers').textContent = totalDrivers;
+    document.getElementById('totalVehicles').textContent = totalVehicles;
+    document.getElementById('tripsToday').textContent = tripsToday;
+}
+
+
+/* ===== 6. Manager: Aba Motoristas (Perfis) ===== */
+async function loadDrivers() {
+    // Filtra o cache de perfis para mostrar apenas motoristas
+    const motoristas = perfisCache.filter(p => p.perfil === 'motorista' && p.ativo);
+    
+    const driversList = document.getElementById('driversList');
+    driversList.innerHTML = '';
+
+    motoristas.forEach(driver => {
+        driversList.innerHTML += `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #4a5568;border-radius:8px;margin-bottom:8px;">
+            <span>${driver.nome}</span>
+            <button class="btn btn-danger" onclick="removeDriverProfile('${driver.id}')" style="margin: 0;">Remover</button>
+          </div>
+        `;
+    });
+}
+
+// Inserção do perfil motorista na tabela 'perfis'
+async function addDriverProfile(event) {
+    event.preventDefault();
+    const nome = document.getElementById('driverName').value.trim();
+    const id_auth = document.getElementById('driverIdAuth').value.trim();
+    const email_auth = document.getElementById('driverEmail').value.trim();
+
+    if (!nome || !id_auth || !email_auth) return;
+
+    const { error } = await supabaseClient
+        .from('perfis')
+        .insert([{ nome, id_auth, email_auth, perfil: 'motorista' }]); // Insere como motorista
+
+    if (error) {
+        console.error(error);
+        showAlert('driverFormAlert', 'Erro ao inserir perfil: ' + error.message, 'error');
+        return;
+    }
+
+    showAlert('driverFormAlert', 'Perfil Motorista cadastrado com sucesso! Ele já pode logar.', 'success');
+    document.querySelector('#driversTab form').reset();
+    await loadProfiles();
+    await loadDrivers();
+    await loadStats();
+    await loadReportDrivers();
+}
+
+async function removeDriverProfile(id) {
+    if (!confirm('Tem certeza que deseja remover este motorista? (Isso não apaga a conta do Auth)')) return;
+    
+    // RLS permite que o gestor atualize perfis de outros
+    const { error } = await supabaseClient.from('perfis')
+        .update({ ativo: false })
+        .eq('id', id);
+
+    if (error) {
+        console.error(error);
+        showAlert('driverFormAlert', 'Erro ao remover motorista', 'error');
+        return;
+    }
+
+    showAlert('driverFormAlert', 'Motorista removido com sucesso', 'success');
+    await loadProfiles();
+    await loadDrivers();
+    await loadStats();
+    await loadReportDrivers();
+}
+
+
+/* ===== 7. Manager: Aba Veículos ===== */
 async function loadVehicles() {
+    // RLS permite que o gestor leia todos os veículos
     const { data, error } = await supabaseClient
         .from('veiculos')
         .select('*')
@@ -608,179 +815,23 @@ async function loadVehicles() {
 
     if (error) {
         console.error("Erro ao carregar veículos:", error);
-        return [];
+        document.getElementById('vehiclesList').innerHTML = '<p>Erro ao carregar veículos.</p>';
+        return;
     }
+
     veiculosCache = data || [];
-    return veiculosCache;
-}
-
-function loadVehicleSelect() {
-    const vehicleSelect = document.getElementById('vehicleSelect');
-    vehicleSelect.innerHTML = '<option value="">Selecione o veículo</option>';
-    veiculosCache.forEach(v => {
-        vehicleSelect.innerHTML += `<option value="${v.id}">${v.descricao} - ${v.placa}</option>`;
-    });
-}
-
-/* ===== Registrar viagem (AJUSTADA) ===== */
-async function registerTrip(event) {
-    event.preventDefault();
-    const motorista_id = document.getElementById('driverIdInput').value; // Usando ID do perfil logado
-    const veiculo_id = document.getElementById('vehicleSelect').value;
-    const destino = document.getElementById('destinationInput').value.trim();
-    const km_inicial = parseInt(document.getElementById('kmInicialInput').value, 10);
-
-    if (!motorista_id || !veiculo_id || !destino || isNaN(km_inicial)) {
-        showAlert('driverAlert', 'Preencha todos os campos e certifique-se que o KM Inicial é um número válido.', 'error');
-        return;
-    }
-
-    const { data, error } = await supabaseClient
-        .from('viagens')
-        .insert([{ motorista_id, veiculo_id, destino, km_inicial }]); // Adicionado km_inicial
-
-    if (error) {
-        console.error("Erro ao registrar viagem:", error);
-        showAlert('driverAlert', 'Erro ao registrar viagem', 'error');
-        return;
-    }
-
-    showAlert('driverAlert', 'Viagem registrada com sucesso! Lembre-se de registrar o KM Final na volta.', 'success');
-    document.querySelector('#driverPortal form').reset();
-    await loadStats(); // Atualiza estatísticas para o gestor
-}
-
-/* ===== Manager: carregar dashboard e tabs ===== */
-async function loadManagerData() {
-  await loadDriversList(); // Carrega lista de motoristas para a aba
-  await loadVehiclesList(); // Carrega lista de veículos para a aba
-  await loadTrips();
-  await loadStats();
-  await loadReportDrivers();
-}
-
-/* ===== Estatísticas ===== */
-async function loadStats() {
-    // Busca Motoristas e Veículos para os contadores
-    const drivers = await loadDrivers(); 
-    const vehicles = await loadVehicles();
-    
-    // Total de Viagens
-    const { data: allTrips } = await supabaseClient.from('viagens').select('*', { count: 'exact' });
-    const totalTrips = allTrips ? allTrips.length : 0;
-    
-    // Viagens Hoje
-    const todayStart = new Date();
-    todayStart.setHours(0,0,0,0);
-    const { count: tripsToday } = await supabaseClient
-        .from('viagens')
-        .select('id', { count: 'exact' })
-        .gte('data_hora', todayStart.toISOString());
-
-    document.getElementById('totalTrips').textContent = totalTrips;
-    document.getElementById('totalDrivers').textContent = drivers.length;
-    document.getElementById('totalVehicles').textContent = vehicles.length;
-    document.getElementById('tripsToday').textContent = tripsToday;
-}
-
-/* ===== Motoristas (manager) ===== */
-async function loadDriversList() {
-  const drivers = await loadDrivers();
-  const driversList = document.getElementById('driversList');
-  driversList.innerHTML = '';
-
-  drivers.forEach(driver => {
-    driversList.innerHTML += `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #4a5568;border-radius:8px;margin-bottom:8px;">
-        <span>${driver.nome} (${driver.email_auth})</span>
-        <button class="btn btn-danger" onclick="removeDriver('${driver.id}')">Remover</button>
-      </div>
-    `;
-  });
-}
-
-/* ===== Cadastro / remoção Motorista (AJUSTADA PARA AUTH) ===== */
-async function addDriver(event) {
-    event.preventDefault();
-    const nome = document.getElementById('driverName').value.trim();
-    const email = document.getElementById('driverEmail').value.trim();
-    const password = document.getElementById('driverPassword').value;
-    if (!nome || !email || !password) return;
-
-    // 1. Cadastra o usuário na autenticação do Supabase
-    const { data: userData, error: authError } = await supabaseClient.auth.signUp({ 
-        email, 
-        password,
-        options: {
-            data: { nome: nome } // Opcional: metadados do usuário
-        }
-    });
-
-    if (authError) {
-        console.error(authError);
-        showAlert('driverFormAlert', `Erro ao criar usuário: ${authError.message}`, 'error');
-        return;
-    }
-    
-    // 2. Cria o perfil na tabela 'perfis'
-    const { data: profileData, error: profileError } = await supabaseClient.from('perfis').insert([
-        { 
-            id_auth: userData.user.id, 
-            nome: nome,
-            email_auth: email,
-            perfil: 'motorista'
-        }
-    ]);
-
-    if (profileError) {
-        // Se a criação do perfil falhar, idealmente remover o usuário da Auth
-        console.error(profileError);
-        showAlert('driverFormAlert', 'Erro ao cadastrar perfil (usuário criado)', 'error');
-        return;
-    }
-
-    showAlert('driverFormAlert', `Motorista ${nome} cadastrado com sucesso!`, 'success');
-    document.querySelector('#driversTab form').reset();
-    await loadDriversList();
-    await loadStats();
-}
-
-async function removeDriver(profileId) {
-    if (!confirm('Tem certeza que deseja remover este motorista? Esta ação o inativará no sistema.')) return;
-    
-    // Inativar o perfil no sistema (não remove o usuário da Auth, o que é mais seguro)
-    const { error: updateError } = await supabaseClient.from('perfis')
-        .update({ ativo: false, updated_at: new Date().toISOString() })
-        .eq('id', profileId);
-
-    if (updateError) {
-        console.error(updateError);
-        showAlert('driverAlert', 'Erro ao remover motorista', 'error');
-        return;
-    }
-
-    showAlert('driverFormAlert', 'Motorista inativado com sucesso', 'success');
-    await loadDriversList();
-    await loadStats();
-    await loadReportDrivers();
-}
-
-
-/* ===== Veículos (manager) ===== */
-async function loadVehiclesList() {
-    const vehicles = await loadVehicles();
     const vehiclesList = document.getElementById('vehiclesList');
     vehiclesList.innerHTML = '';
 
-    vehicles.forEach(vehicle => {
+    veiculosCache.forEach(vehicle => {
         vehiclesList.innerHTML += `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #4a5568;border-radius:8px;margin-bottom:8px;">
-                <div>
-                    <div style="font-weight:600;">${vehicle.descricao}</div>
-                    <div style="color:#718096;font-size:0.9rem;">Placa: ${vehicle.placa}</div>
-                </div>
-                <button class="btn btn-danger" onclick="removeVehicle('${vehicle.id}')">Remover</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #4a5568;border-radius:8px;margin-bottom:8px;">
+            <div>
+              <div style="font-weight:600;">${vehicle.descricao}</div>
+              <div style="color:#a0aec0;font-size:0.9rem;">Placa: ${vehicle.placa}</div>
             </div>
+            <button class="btn btn-danger" onclick="removeVehicle('${vehicle.id}')" style="margin: 0;">Remover</button>
+          </div>
         `;
     });
 }
@@ -791,7 +842,8 @@ async function addVehicle(event) {
     const placa = document.getElementById('vehiclePlate').value.trim();
     if (!descricao || !placa) return;
 
-    const { data, error } = await supabaseClient.from('veiculos').insert([{ descricao, placa }]);
+    // RLS permite que o gestor insira veículos
+    const { error } = await supabaseClient.from('veiculos').insert([{ descricao, placa }]);
     if (error) {
         console.error(error);
         showAlert('vehicleFormAlert', 'Erro ao cadastrar veículo', 'error');
@@ -801,14 +853,16 @@ async function addVehicle(event) {
     showAlert('vehicleFormAlert', 'Veículo cadastrado com sucesso!', 'success');
     document.getElementById('vehicleDescription').value = '';
     document.getElementById('vehiclePlate').value = '';
-    await loadVehiclesList();
+    await loadVehicles();
     await loadStats();
 }
 
 async function removeVehicle(id) {
     if (!confirm('Tem certeza que deseja remover este veículo?')) return;
+    
+    // RLS permite que o gestor atualize/delete veículos
     const { error } = await supabaseClient.from('veiculos')
-        .update({ ativo: false, updated_at: new Date().toISOString() })
+        .update({ ativo: false })
         .eq('id', id);
 
     if (error) {
@@ -817,13 +871,15 @@ async function removeVehicle(id) {
         return;
     }
 
-    showAlert('vehicleFormAlert', 'Veículo inativado com sucesso', 'success');
-    await loadVehiclesList();
+    showAlert('vehicleFormAlert', 'Veículo removido com sucesso', 'success');
+    await loadVehicles();
     await loadStats();
 }
 
-/* ===== Viagens: listar (AJUSTADA) ===== */
+
+/* ===== 8. Manager: Aba Viagens (Listar) ===== */
 async function loadTrips() {
+    // RLS permite ao gestor ver todas as viagens
     const { data: trips, error } = await supabaseClient
         .from('viagens')
         .select('*')
@@ -835,45 +891,47 @@ async function loadTrips() {
         return;
     }
 
-    const viagensCache = trips || [];
-    const drivers = await loadDrivers();
-    const vehicles = await loadVehicles();
+    if (!perfisCache.length) await loadProfiles();
+    if (!veiculosCache.length) await loadVehicles();
 
     const tripsList = document.getElementById('tripsList');
-    if (!viagensCache.length) {
+    if (!trips || trips.length === 0) {
         tripsList.innerHTML = '<p>Nenhuma viagem registrada.</p>';
         return;
     }
 
     let html = `
         <table class="table">
-            <thead>
-                <tr>
-                    <th>Data/Hora</th>
-                    <th>Motorista</th>
-                    <th>Veículo</th>
-                    <th>Destino</th>
-                    <th>Km Inicial</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Motorista</th>
+              <th>Veículo</th>
+              <th>Destino</th>
+              <th>Km Inicial</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
 
-    viagensCache.forEach(trip => {
+    trips.forEach(trip => {
         const date = new Date(trip.data_hora).toLocaleString('pt-BR');
-        const motorista = drivers.find(m => m.id === trip.motorista_id);
-        const veiculo = vehicles.find(v => v.id === trip.veiculo_id);
+        const motorista = perfisCache.find(p => p.id === trip.motorista_id);
+        const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
+        const kmColor = trip.km_final ? '#48bb78' : '#f56565';
+        const statusText = trip.km_final ? 'Concluída' : 'Em Andamento';
+
 
         html += `
-            <tr>
-                <td>${date}</td>
-                <td>${motorista?.nome || 'N/A'}</td>
-                <td>${veiculo ? veiculo.descricao + ' - ' + veiculo.placa : 'N/A'}</td>
-                <td>${trip.destino}</td>
-                <td>${trip.km_inicial || 'N/A'}</td>
-                <td><span style="background:#48bb78;color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${trip.status}</span></td>
-            </tr>
+          <tr>
+            <td>${date}</td>
+            <td>${motorista?.nome || 'N/A'}</td>
+            <td>${veiculo ? veiculo.descricao + ' - ' + veiculo.placa : 'N/A'}</td>
+            <td>${trip.destino}</td>
+            <td>${trip.km_inicial}</td>
+            <td><span style="background:${kmColor};color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;">${statusText}</span></td>
+          </tr>
         `;
     });
 
@@ -881,12 +939,14 @@ async function loadTrips() {
     tripsList.innerHTML = html;
 }
 
-/* ===== Relatórios (AJUSTADA) ===== */
+/* ===== 9. Manager: Aba Relatórios (PDF) ===== */
 async function loadReportDrivers() {
-    const drivers = await loadDrivers();
+    if (!perfisCache.length) await loadProfiles();
+
     const reportDriverSelect = document.getElementById('reportDriverSelect');
     reportDriverSelect.innerHTML = '<option value="">Todos os motoristas</option>';
-    drivers.forEach(d => {
+
+    perfisCache.filter(p => p.perfil === 'motorista' && p.ativo).forEach(d => {
         reportDriverSelect.innerHTML += `<option value="${d.id}">${d.nome}</option>`;
     });
 }
@@ -918,19 +978,22 @@ async function generateReport() {
         return;
     }
 
-    const drivers = await loadDrivers();
-    const vehicles = await loadVehicles();
+    if (!perfisCache.length) await loadProfiles();
+    if (!veiculosCache.length) await loadVehicles();
 
     const tableData = viagensFiltradas.map(trip => {
-        const motorista = drivers.find(m => m.id === trip.motorista_id);
-        const veiculo = vehicles.find(v => v.id === trip.veiculo_id);
+        const motorista = perfisCache.find(p => p.id === trip.motorista_id);
+        const veiculo = veiculosCache.find(v => v.id === trip.veiculo_id);
+        const status = trip.km_final ? 'Concluída' : 'Em Andamento';
+
         return [
             new Date(trip.data_hora).toLocaleString('pt-BR'),
             motorista?.nome || 'N/A',
             veiculo ? `${veiculo.descricao} - ${veiculo.placa}` : 'N/A',
             trip.destino || 'N/A',
-            trip.km_inicial || 'N/A',
-            trip.status
+            trip.km_inicial,
+            trip.km_final || '-',
+            status
         ];
     });
 
@@ -940,57 +1003,56 @@ async function generateReport() {
     doc.setFontSize(20);
     doc.text('Relatório de Viagens', 20, 30);
     doc.setFontSize(12);
-    doc.text(`Período: ${period} dias`, 20, 45);
+    doc.text(`Período: Últimos ${period} dias`, 20, 45);
     doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 55);
+    
+    let yStart = 65;
     if (driverId) {
-        const motorista = drivers.find(m => m.id === driverId);
+        const motorista = perfisCache.find(m => m.id === driverId);
         doc.text(`Motorista: ${motorista?.nome || 'N/A'}`, 20, 65);
+        yStart = 75;
     }
 
     doc.autoTable({
-        head: [['Data/Hora', 'Motorista', 'Veículo', 'Destino', 'Km Inicial', 'Status']],
+        head: [['Data/Hora', 'Motorista', 'Veículo', 'Destino', 'Km Inicial', 'Km Final', 'Status']],
         body: tableData,
-        startY: driverId ? 75 : 65,
+        startY: yStart,
         styles: { fontSize: 8 }
     });
-
-    const finalY = doc.lastAutoTable.finalY + 30;
-    doc.text('Assinatura do Motorista: ________________________________', 20, finalY);
-    doc.text('Data: ___/___/______', 20, finalY + 15);
 
     const fileName = `relatorio-viagens-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
 }
 
-/* ===== Util: alert & tabs ===== */
+/* ===== 10. Utilidades ===== */
 function showAlert(containerId, message, type) {
-    const container = document.getElementById(containerId);
-    const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-    // Para alertas de erro no login, mantenha o foco para o usuário
-    if (type === 'error' && containerId === 'loginAlert') {
-        container.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
-        return;
-    }
-    
-    container.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
-    setTimeout(() => { container.innerHTML = ''; }, 5000);
+  const container = document.getElementById(containerId);
+  const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+  container.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+  setTimeout(() => { container.innerHTML = ''; }, 5000);
 }
 
 function showTab(e, tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(tabName + 'Tab').classList.remove('hidden');
-    if (e && e.target) e.target.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(tabName + 'Tab').classList.remove('hidden');
+  if (e && e.target) e.target.classList.add('active');
+  
+  // Recarrega dados específicos se necessário
+  if (tabName === 'drivers') loadDrivers();
+  if (tabName === 'vehicles') loadVehicles();
+  if (tabName === 'trips') loadTrips();
 }
 
-/* ===== Inicialização: Checar sessão ao carregar a página ===== */
-document.addEventListener('DOMContentLoaded', async function() {
-    // Checa a sessão ao carregar para direcionar o usuário logado
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-        showLoginScreen();
-    }
+/* ===== 11. Inicialização da Tela ===== */
+document.addEventListener('DOMContentLoaded', function() {
+    // Tenta obter o estado da sessão ao carregar a página
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (!session) {
+            showLoginScreen();
+        }
+        // Se houver sessão, o onAuthStateChange fará o roteamento
+    });
 });
 </script>
-</body>
 </html>
