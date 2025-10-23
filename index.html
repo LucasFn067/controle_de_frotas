@@ -36,10 +36,10 @@
             <form class="mt-8 space-y-6" onsubmit="handleLogin(event)">
                 <div class="space-y-4">
                     <div>
-                        <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
+                        <label for="username" class="block text-sm font-medium text-gray-700">Usuário (E-mail)</label>
                         <input id="username" name="username" type="text" required 
                                class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm" 
-                               placeholder="Digite seu usuário">
+                               placeholder="Digite seu e-mail (gestor@frota.com)">
                     </div>
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
@@ -54,7 +54,7 @@
                     </button>
                 </div>
                 <div class="text-xs text-gray-500 text-center">
-                    <p>Teste: gestor / 123456</p>
+                    <p>Agora use as credenciais criadas no Painel de Auth do Supabase.</p>
                 </div>
             </form>
         </div>
@@ -100,23 +100,9 @@
                         <h3 class="text-lg font-medium text-gray-900">Gestão de Motoristas</h3>
                     </div>
                     <div class="p-6">
-                        <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h4 class="text-md font-medium text-gray-900 mb-4">Adicionar Motorista</h4>
-                            <form onsubmit="addDriver(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="driverName" class="block text-sm font-medium text-gray-700">Nome</label>
-                                    <input type="text" id="driverName" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                </div>
-                                <div>
-                                    <label for="driverUsername" class="block text-sm font-medium text-gray-700">Usuário</label>
-                                    <input type="text" id="driverUsername" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                </div>
-                                <div class="flex items-end">
-                                    <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium">
-                                        Adicionar
-                                    </button>
-                                </div>
-                            </form>
+                        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 class="text-md font-medium text-yellow-800 mb-4">Atenção!</h4>
+                            <p class="text-sm text-yellow-700">A criação de novos motoristas deve ser feita no Painel de Auth do Supabase (para criar o e-mail/senha). O registro aqui é automático via RLS.</p>
                         </div>
 
                         <div>
@@ -295,54 +281,76 @@
     <script>
         // **********************************************
         // CONFIGURAÇÃO SUPABASE
+        // AS CHAVES FORAM MANTIDAS CONFORME SOLICITADO.
         // **********************************************
-        // ATENÇÃO: SUBSTITUA ESSES VALORES PELOS SEUS DADOS DO PROJETO SUPABASE!
         const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
 
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null; 
-        let drivers = [];   // Populado por loadDriversData()
-        let vehicles = [];  // Populado por loadVehiclesData()
-        let trips = [];     // Populado por loadDriverTrips() ou generateReport()
+        let drivers = [];   
+        let vehicles = [];  
+        let trips = [];     
 
         // **********************************************
-        // AUTENTICAÇÃO SUPABASE
+        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA VIA SUPABASE AUTH + ROLE)
         // **********************************************
 
         async function handleLogin(event) {
             event.preventDefault();
-            const username = document.getElementById('username').value;
+            const email = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // Login do Gestor (Simulação para testes iniciais)
-            if (username === 'gestor' && password === '123456') {
-                currentUser = { type: 'manager', username: 'gestor', id: 'manager_admin' };
-                showManagerDashboard();
+            // 1. Tenta autenticar via Supabase Auth (válido para Gestor e Motorista)
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: email, 
+                password: password,
+            });
+            
+            if (authError) {
+                alert('Erro de login: Usuário ou senha incorretos, ou e-mail não confirmado.');
                 return;
             }
 
-            // 1. Tenta autenticar o Motorista diretamente na tabela 'drivers' (MÉTODO INSEGURO/TEMPORÁRIO)
-            // O ideal é usar supabase.auth.signInWithPassword após criar os usuários no Auth do Supabase.
-            const { data: driverData, error: driverError } = await supabase
-                .from('drivers')
-                .select('id, name')
-                .eq('username', username)
-                .eq('password', password) 
+            // 2. Busca o perfil para determinar a role (Gestor ou Motorista)
+            const userUid = authData.user.id;
+            const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('full_name, role')
+                .eq('id', userUid)
                 .single();
 
-            if (driverData) {
-                currentUser = { type: 'driver', id: driverData.id, name: driverData.name };
-                showDriverDashboard();
+            if (profileError || !profileData) {
+                alert('Perfil não encontrado. O login foi bem-sucedido, mas o perfil não está configurado corretamente.');
+                await supabase.auth.signOut();
                 return;
             }
 
-            alert('Usuário ou senha incorretos! Verifique o console para erros de integração.');
+            // 3. Redireciona com base na ROLE
+            if (profileData.role === 'manager') {
+                currentUser = { type: 'manager', id: userUid, name: profileData.full_name };
+                showManagerDashboard();
+            } else if (profileData.role === 'driver') {
+                // Busca o ID interno (driver.id) da tabela 'drivers' para as operações CRUD
+                const { data: driverInfo, error: driverInfoError } = await supabase
+                    .from('drivers')
+                    .select('id, name')
+                    .eq('auth_uid', userUid) // Usa o UUID de Auth como chave de busca
+                    .single();
+
+                if (driverInfo) {
+                    // currentUser.id agora é o ID numérico da tabela 'drivers'
+                    currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid };
+                    showDriverDashboard();
+                } else {
+                     alert('Perfil de motorista ativo, mas ID interno não encontrado. Verifique se o trigger de sincronização está funcionando.');
+                     await supabase.auth.signOut();
+                }
+            }
         }
 
         async function logout() {
-            // Tenta fazer o logout no Supabase Auth (mesmo que não tenha usado para logar)
             await supabase.auth.signOut(); 
             
             currentUser = null;
@@ -364,7 +372,7 @@
         async function showDriverDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('driverDashboard').classList.remove('hidden');
-            await loadVehiclesData(); // Carrega veículos primeiro
+            await loadVehiclesData(); 
             loadDriverVehicles();
             checkActiveTrip();
             loadDriverTripHistory();
@@ -395,16 +403,17 @@
         }
 
         // **********************************************
-        // GESTÃO DE MOTORISTAS SUPABASE
+        // GESTÃO DE MOTORISTAS SUPABASE (Ajustada para RLS e Auth)
         // **********************************************
 
         async function loadDriversData() {
             const driversList = document.getElementById('driversList');
             driversList.innerHTML = '<p class="text-gray-500">Carregando motoristas...</p>';
 
+            // Adicionado 'auth_uid' no select, essencial para exclusão/alteração de senha
             const { data, error } = await supabase
                 .from('drivers')
-                .select('*')
+                .select('id, name, username, auth_uid')
                 .order('name', { ascending: true });
 
             if (error) {
@@ -430,10 +439,10 @@
                         <p class="text-sm text-gray-500">Usuário: ${driver.username}</p>
                     </div>
                     <div class="flex space-x-2">
-                        <button onclick="changeDriverPassword(${driver.id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                        <button onclick="changeDriverPassword('${driver.auth_uid}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
                             Alterar Senha
                         </button>
-                        <button onclick="deleteDriver(${driver.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                        <button onclick="deleteDriver('${driver.auth_uid}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                             Excluir
                         </button>
                     </div>
@@ -444,80 +453,36 @@
 
         async function addDriver(event) {
             event.preventDefault();
-            const name = document.getElementById('driverName').value;
-            const username = document.getElementById('driverUsername').value;
-
-            const { data: existing } = await supabase
-                .from('drivers')
-                .select('id')
-                .eq('username', username);
-
-            if (existing && existing.length > 0) {
-                alert('Nome de usuário já existe!');
-                return;
-            }
-
-            const newDriver = {
-                name: name,
-                username: username,
-                password: '123456' // Inseguro/Temporário. Use o Auth do Supabase para senhas!
-            };
-
-            const { error } = await supabase
-                .from('drivers')
-                .insert([newDriver]);
-
-            if (error) {
-                alert('Erro ao adicionar motorista: ' + error.message);
-                return;
-            }
-
-            document.getElementById('driverName').value = '';
-            document.getElementById('driverUsername').value = '';
-            loadDriversData();
+            alert('Motoristas devem ser criados/convidados diretamente no Painel de Autenticação do Supabase (Authentication -> Users). O RLS e os Triggers se encarregam de criar o perfil no banco de dados.');
         }
 
-        async function changeDriverPassword(driverId) {
-            const newPassword = prompt('Digite a nova senha:');
-            if (newPassword && newPassword.trim()) {
-                
-                const { error: updateError } = await supabase
-                    .from('drivers')
-                    .update({ password: newPassword.trim() })
-                    .eq('id', driverId);
-
-                if (updateError) {
-                    alert('Erro ao alterar senha: ' + updateError.message);
-                    return;
-                }
-
-                alert('Senha alterada com sucesso! (Lembrete: Atualize o método para usar Supabase Auth)');
-                loadDriversData();
-            }
+        // Função de alteração de senha atualizada para usar o Supabase Auth (Apenas placeholder, requer Admin)
+        async function changeDriverPassword(driverAuthUid) {
+            alert('A alteração de senha de outro usuário (Gestor para Motorista) requer uma Função de Administrador ou Edge Function do Supabase (Admin API). \n\nPara o front-end, o motorista deve usar o fluxo de "esqueci minha senha" do Supabase Auth, que envia um e-mail de redefinição.');
         }
 
-        async function deleteDriver(driverId) {
-            if (confirm('Tem certeza que deseja excluir este motorista? As viagens dele também serão removidas.')) {
+        // Função de exclusão atualizada para excluir do Auth
+        async function deleteDriver(driverAuthUid) {
+            if (confirm('Tem certeza que deseja excluir este motorista? O usuário Auth, o Perfil, o registro Driver e todas as Viagens (trips) dele serão removidos.')) {
                 
-                await supabase.from('trips').delete().eq('driverId', driverId);
-                
-                const { error } = await supabase
-                    .from('drivers')
+                // Excluir o PERFIL. O RLS/SQL está configurado para que a exclusão do profile (via UUID)
+                // faça o CASCADE para auth.users, drivers e trips.
+                const { error: profileError } = await supabase
+                    .from('profiles')
                     .delete()
-                    .eq('id', driverId);
+                    .eq('id', driverAuthUid);
 
-                if (error) {
-                    alert('Erro ao excluir motorista: ' + error.message);
+                if (profileError) {
+                    alert('Erro ao excluir usuário: ' + profileError.message);
                     return;
                 }
                 
                 loadDriversData();
-                loadDriverTrips(); // Recarrega a lista de viagens caso estivesse filtrada por ele
             }
         }
 
         // **********************************************
-        // GESTÃO DE VEÍCULOS SUPABASE
+        // GESTÃO DE VEÍCULOS SUPABASE (Usando snake_case para colunas)
         // **********************************************
 
         async function loadVehiclesData() {
@@ -609,7 +574,7 @@
         }
 
         // **********************************************
-        // GESTÃO DE VIAGENS - GESTOR SUPABASE
+        // GESTÃO DE VIAGENS - GESTOR SUPABASE (Usando snake_case para colunas)
         // **********************************************
         
         function updateDriverSelects() {
@@ -623,7 +588,7 @@
 
                 drivers.forEach(driver => {
                     const option = document.createElement('option');
-                    option.value = driver.id;
+                    option.value = driver.id; // ID Numérico
                     option.textContent = driver.name;
                     select.appendChild(option);
                 });
@@ -645,8 +610,8 @@
             const { data, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driverId', driverId)
-                .order('startTime', { ascending: false });
+                .eq('driver_id', driverId) // Corrigido para driver_id
+                .order('start_time', { ascending: false }); // Corrigido para start_time
 
             if (error) {
                 tripsList.innerHTML = `<p class="text-red-500">Erro ao carregar viagens: ${error.message}</p>`;
@@ -665,7 +630,7 @@
             const tripsContainer = tripsList.querySelector('.space-y-3');
 
             trips.forEach(trip => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicleId);
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); // Corrigido para vehicle_id
                 const tripDiv = document.createElement('div');
                 tripDiv.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
                 
@@ -677,9 +642,9 @@
                     <div>
                         <h5 class="font-medium text-gray-900">${trip.destination}</h5>
                         <p class="text-sm text-gray-500">${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'Veículo não encontrado'}</p>
-                        <p class="text-sm text-gray-500">Início: ${new Date(trip.startTime).toLocaleString('pt-BR')}</p>
-                        ${trip.endTime ? `<p class="text-sm text-gray-500">Fim: ${new Date(trip.endTime).toLocaleString('pt-BR')}</p>` : ''}
-                        <p class="text-sm text-gray-500">KM: ${trip.initialKm}${trip.finalKm ? ' - ' + trip.finalKm + ' (' + (trip.finalKm - trip.initialKm) + ' km)' : ''}</p>
+                        <p class="text-sm text-gray-500">Início: ${new Date(trip.start_time).toLocaleString('pt-BR')}</p>
+                        ${trip.end_time ? `<p class="text-sm text-gray-500">Fim: ${new Date(trip.end_time).toLocaleString('pt-BR')}</p>` : ''}
+                        <p class="text-sm text-gray-500">KM: ${trip.initial_km}${trip.final_km ? ' - ' + trip.final_km + ' (' + (trip.final_km - trip.initial_km) + ' km)' : ''}</p>
                     </div>
                     <div class="flex items-center space-x-2">
                         ${statusBadge}
@@ -716,7 +681,7 @@
                 const { error } = await supabase
                     .from('trips')
                     .delete()
-                    .eq('driverId', driverId);
+                    .eq('driver_id', driverId); // Corrigido para driver_id
 
                 if (error) {
                     alert('Erro ao zerar viagens: ' + error.message);
@@ -728,7 +693,7 @@
         }
 
         // **********************************************
-        // GESTÃO DE VIAGENS - MOTORISTA SUPABASE
+        // GESTÃO DE VIAGENS - MOTORISTA SUPABASE (Usando snake_case para colunas)
         // **********************************************
 
         function loadDriverVehicles() {
@@ -752,31 +717,30 @@
             // Verifica se o currentUser está definido e é um motorista
             if (!currentUser || currentUser.type !== 'driver') {
                  activeTripSection.classList.add('hidden');
-                 newTripSection.classList.add('hidden'); // O dashboard inteiro do motorista já deveria estar oculto.
+                 newTripSection.classList.add('hidden'); 
                  return;
             }
             
             const { data: activeTrip, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driverId', currentUser.id)
+                .eq('driver_id', currentUser.id) // Corrigido para driver_id
                 .eq('status', 'active')
                 .single(); 
 
             if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha (OK)
                 console.error('Erro ao buscar viagem ativa:', error.message);
-                // Não retorna, apenas oculta
                 activeTripSection.classList.add('hidden');
                 newTripSection.classList.remove('hidden');
             }
 
             if (activeTrip) {
-                const vehicle = vehicles.find(v => v.id === activeTrip.vehicleId);
+                const vehicle = vehicles.find(v => v.id === activeTrip.vehicle_id); // Corrigido para vehicle_id
                 document.getElementById('activeTripDetails').innerHTML = `
                     <p><strong>Destino:</strong> ${activeTrip.destination}</p>
                     <p><strong>Veículo:</strong> ${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'N/A'}</p>
-                    <p><strong>KM Inicial:</strong> ${activeTrip.initialKm}</p>
-                    <p><strong>Início:</strong> ${new Date(activeTrip.startTime).toLocaleString('pt-BR')}</p>
+                    <p><strong>KM Inicial:</strong> ${activeTrip.initial_km}</p>
+                    <p><strong>Início:</strong> ${new Date(activeTrip.start_time).toLocaleString('pt-BR')}</p>
                 `;
                 activeTripSection.classList.remove('hidden');
                 newTripSection.classList.add('hidden');
@@ -793,11 +757,11 @@
             const initialKm = parseInt(document.getElementById('initialKm').value);
 
             const newTrip = {
-                driverId: currentUser.id,
+                driver_id: currentUser.id, // Corrigido para driver_id
                 destination: destination,
-                vehicleId: vehicleId,
-                initialKm: initialKm,
-                startTime: new Date().toISOString(),
+                vehicle_id: vehicleId, // Corrigido para vehicle_id
+                initial_km: initialKm, // Corrigido para initial_km
+                start_time: new Date().toISOString(), // Corrigido para start_time
                 status: 'active'
             };
 
@@ -828,7 +792,7 @@
             const { data: activeTrip, error: fetchError } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driverId', currentUser.id)
+                .eq('driver_id', currentUser.id) // Corrigido para driver_id
                 .eq('status', 'active')
                 .single();
             
@@ -837,14 +801,14 @@
                 return;
             }
 
-            if (finalKm < activeTrip.initialKm) {
+            if (finalKm < activeTrip.initial_km) { // Corrigido para initial_km
                 alert('KM final deve ser maior que KM inicial.');
                 return;
             }
             
             const updateData = {
-                finalKm: finalKm,
-                endTime: new Date().toISOString(),
+                final_km: finalKm, // Corrigido para final_km
+                end_time: new Date().toISOString(), // Corrigido para end_time
                 status: 'completed'
             };
 
@@ -870,9 +834,9 @@
             const { data: driverTrips, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driverId', currentUser.id)
+                .eq('driver_id', currentUser.id) // Corrigido para driver_id
                 .eq('status', 'completed')
-                .order('endTime', { ascending: false });
+                .order('end_time', { ascending: false }); // Corrigido para end_time
 
             if (error) {
                 historyDiv.innerHTML = `<p class="text-red-500">Erro ao carregar histórico: ${error.message}</p>`;
@@ -888,21 +852,21 @@
             const tripsContainer = historyDiv.querySelector('.space-y-3');
 
             driverTrips.forEach(trip => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicleId);
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); // Corrigido para vehicle_id
                 const tripDiv = document.createElement('div');
                 tripDiv.className = 'p-4 bg-gray-50 rounded-lg';
                 tripDiv.innerHTML = `
                     <h5 class="font-medium text-gray-900">${trip.destination}</h5>
                     <p class="text-sm text-gray-500">${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'Veículo não encontrado'}</p>
-                    <p class="text-sm text-gray-500">Período: ${new Date(trip.startTime).toLocaleString('pt-BR')} - ${new Date(trip.endTime).toLocaleString('pt-BR')}</p>
-                    <p class="text-sm text-gray-500">Quilometragem: ${trip.initialKm} - ${trip.finalKm} (${trip.finalKm - trip.initialKm} km)</p>
+                    <p class="text-sm text-gray-500">Período: ${new Date(trip.start_time).toLocaleString('pt-BR')} - ${new Date(trip.end_time).toLocaleString('pt-BR')}</p>
+                    <p class="text-sm text-gray-500">Quilometragem: ${trip.initial_km} - ${trip.final_km} (${trip.final_km - trip.initial_km} km)</p>
                 `;
                 tripsContainer.appendChild(tripDiv);
             });
         }
 
         // **********************************************
-        // RELATÓRIOS SUPABASE
+        // RELATÓRIOS SUPABASE (Usando snake_case para colunas)
         // **********************************************
 
         async function generateReport() {
@@ -924,10 +888,10 @@
             const { data: driverTrips, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driverId', driverId)
+                .eq('driver_id', driverId) // Corrigido para driver_id
                 .eq('status', 'completed')
-                .gte('startTime', cutoffISODate)
-                .order('startTime', { ascending: true });
+                .gte('start_time', cutoffISODate) // Corrigido para start_time
+                .order('start_time', { ascending: true }); // Corrigido para start_time
 
             if (error) {
                 alert('Erro ao buscar viagens para o relatório: ' + error.message);
@@ -960,9 +924,9 @@
 
             doc.setFontSize(10);
             driverTrips.forEach((trip, index) => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicleId);
-                const startDate = new Date(trip.startTime).toLocaleDateString('pt-BR');
-                const distance = trip.finalKm - trip.initialKm;
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); // Corrigido para vehicle_id
+                const startDate = new Date(trip.start_time).toLocaleDateString('pt-BR'); // Corrigido para start_time
+                const distance = trip.final_km - trip.initial_km; // Corrigido para final_km, initial_km
 
                 doc.text(`${index + 1}. ${trip.destination}`, 20, yPosition);
                 doc.text(`Veículo: ${vehicle ? vehicle.plate : 'N/A'}`, 30, yPosition + 8);
@@ -979,7 +943,7 @@
             });
 
             // Summary
-            const totalDistance = driverTrips.reduce((sum, trip) => sum + (trip.finalKm - trip.initialKm), 0);
+            const totalDistance = driverTrips.reduce((sum, trip) => sum + (trip.final_km - trip.initial_km), 0); // Corrigido para final_km, initial_km
             yPosition += 10;
             doc.setFontSize(12);
             doc.text(`Total de viagens: ${driverTrips.length}`, 20, yPosition);
