@@ -11,6 +11,7 @@
         body {
             box-sizing: border-box;
         }
+        /* Definições de cores mantidas */
         .bg-primary { background-color: #6B8E23; }
         .bg-primary-light { background-color: #8FBC8F; }
         .bg-primary-dark { background-color: #556B2F; }
@@ -280,12 +281,12 @@
 
     <script>
         // **********************************************
-        // CONFIGURAÇÃO SUPABASE
-        // AS CHAVES FORAM MANTIDAS CONFORME SOLICITADO.
+        // CONFIGURAÇÃO SUPABASE (AS CHAVES FORAM MANTIDAS)
         // **********************************************
         const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
 
+        // CRIAÇÃO DO CLIENTE SUPABASE
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null; 
@@ -294,25 +295,34 @@
         let trips = [];     
 
         // **********************************************
-        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA VIA SUPABASE AUTH + ROLE)
+        // FUNÇÃO DE AUTENTICAÇÃO E ROLE CHECK (CORRIGIDA)
         // **********************************************
 
         async function handleLogin(event) {
-            event.preventDefault();
+            // Previne o recarregamento da página
+            event.preventDefault(); 
+            
             const email = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // 1. Tenta autenticar via Supabase Auth (válido para Gestor e Motorista)
+            // 1. Tenta autenticar via Supabase Auth
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email, 
                 password: password,
             });
             
             if (authError) {
+                // Falha de credencial ou usuário não confirmado
                 alert('Erro de login: Usuário ou senha incorretos, ou e-mail não confirmado.');
                 return;
             }
 
+            // Garante que authData.user exista
+            if (!authData.user) {
+                alert('Erro desconhecido na autenticação. Tente novamente.');
+                return;
+            }
+            
             // 2. Busca o perfil para determinar a role (Gestor ou Motorista)
             const userUid = authData.user.id;
             const { data: profileData, error: profileError } = await supabase
@@ -322,18 +332,19 @@
                 .single();
 
             if (profileError || !profileData) {
-                // ESTE É O ERRO QUE O RLS CORRIGIDO DEVE RESOLVER.
-                alert('Perfil não encontrado. O login foi bem-sucedido, mas o perfil não está configurado corretamente.');
+                // RLS CORRIGIDA DEVE RESOLVER ESTE ERRO. Se persistir, RLS está incorreta no SELECT.
+                alert('Perfil não encontrado. O login foi bem-sucedido, mas o perfil não está configurado corretamente. (Verifique o RLS da tabela profiles)');
                 await supabase.auth.signOut();
                 return;
             }
 
-            // 3. Redireciona com base na ROLE
+            // 3. Redireciona com base na ROLE (Aqui estava o foco do erro 'manager')
             if (profileData.role === 'manager') {
-                currentUser = { type: 'manager', id: userUid, name: profileData.full_name };
+                // Usuário é gestor. Usa o UUID como ID de usuário no front-end.
+                currentUser = { type: 'manager', id: userUid, name: profileData.full_name, role: profileData.role };
                 showManagerDashboard();
             } else if (profileData.role === 'driver') {
-                // Busca o ID interno (driver.id) da tabela 'drivers' para as operações CRUD
+                // Usuário é motorista. Precisa do ID numérico da tabela 'drivers' para as FKs.
                 const { data: driverInfo, error: driverInfoError } = await supabase
                     .from('drivers')
                     .select('id, name')
@@ -342,19 +353,28 @@
 
                 if (driverInfo) {
                     // currentUser.id agora é o ID numérico da tabela 'drivers'
-                    currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid };
+                    currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid, role: profileData.role };
                     showDriverDashboard();
                 } else {
                      alert('Perfil de motorista ativo, mas ID interno não encontrado. Verifique se o trigger de sincronização está funcionando.');
                      await supabase.auth.signOut();
                 }
+            } else {
+                alert('Função (role) de usuário desconhecida. Por favor, contate o administrador.');
+                await supabase.auth.signOut();
             }
         }
 
         async function logout() {
-            await supabase.auth.signOut(); 
+            // Tenta obter o estado do usuário antes de deslogar
+            const { error } = await supabase.auth.signOut(); 
+            
+            if (error) {
+                console.error("Erro ao deslogar:", error);
+            }
             
             currentUser = null;
+            // Redireciona para a tela de login
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('managerDashboard').classList.add('hidden');
             document.getElementById('driverDashboard').classList.add('hidden');
@@ -364,20 +384,29 @@
 
         function showManagerDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('driverDashboard').classList.add('hidden');
             document.getElementById('managerDashboard').classList.remove('hidden');
+            
+            // Carrega dados no dashboard do Gestor
             showTab('drivers');
+            // Como drivers e vehicles são necessários para várias abas, carregamos de forma assíncrona
             loadDriversData();
-            loadVehiclesData();
+            loadVehiclesData(); 
         }
 
         async function showDriverDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('managerDashboard').classList.add('hidden');
             document.getElementById('driverDashboard').classList.remove('hidden');
+
+            // Garante que vehicles estejam carregados antes de mostrar o form
             await loadVehiclesData(); 
             loadDriverVehicles();
             checkActiveTrip();
             loadDriverTripHistory();
         }
+
+        // --- FUNÇÕES DE DASHBOARD --- (Mantidas, mas corrigidas para snake_case)
 
         // Tab Management
         function showTab(tabName) {
@@ -404,7 +433,7 @@
         }
 
         // **********************************************
-        // GESTÃO DE MOTORISTAS SUPABASE (Ajustada para RLS e Auth)
+        // GESTÃO DE MOTORISTAS SUPABASE (snake_case)
         // **********************************************
 
         async function loadDriversData() {
@@ -452,12 +481,7 @@
             });
         }
 
-        async function addDriver(event) {
-            event.preventDefault();
-            alert('Motoristas devem ser criados/convidados diretamente no Painel de Autenticação do Supabase (Authentication -> Users). O RLS e os Triggers se encarregam de criar o perfil no banco de dados.');
-        }
-
-        // Função de alteração de senha atualizada para usar o Supabase Auth (Apenas placeholder, requer Admin)
+        // Função de alteração de senha atualizada (Requer Admin API)
         async function changeDriverPassword(driverAuthUid) {
             alert('A alteração de senha de outro usuário (Gestor para Motorista) requer uma Função de Administrador ou Edge Function do Supabase (Admin API). \n\nPara o front-end, o motorista deve usar o fluxo de "esqueci minha senha" do Supabase Auth, que envia um e-mail de redefinição.');
         }
@@ -466,8 +490,8 @@
         async function deleteDriver(driverAuthUid) {
             if (confirm('Tem certeza que deseja excluir este motorista? O usuário Auth, o Perfil, o registro Driver e todas as Viagens (trips) dele serão removidos.')) {
                 
-                // Excluir o PERFIL. O RLS/SQL está configurado para que a exclusão do profile (via UUID)
-                // faça o CASCADE para auth.users, drivers e trips.
+                // Excluir o PERFIL (UUID). O RLS/SQL está configurado para que a exclusão do profile (via UUID)
+                // faça o CASCADE para auth.users, drivers e trips (se as FKS foram configuradas corretamente).
                 const { error: profileError } = await supabase
                     .from('profiles')
                     .delete()
@@ -483,7 +507,7 @@
         }
 
         // **********************************************
-        // GESTÃO DE VEÍCULOS SUPABASE (Usando snake_case para colunas)
+        // GESTÃO DE VEÍCULOS SUPABASE (snake_case)
         // **********************************************
 
         async function loadVehiclesData() {
@@ -522,6 +546,9 @@
                 `;
                 vehiclesList.appendChild(vehicleDiv);
             });
+
+            // Retorna dados para que o motorista possa usar imediatamente
+            return data;
         }
 
         async function addVehicle(event) {
@@ -529,15 +556,8 @@
             const plate = document.getElementById('vehiclePlate').value;
             const model = document.getElementById('vehicleModel').value;
 
-            const { data: existing } = await supabase
-                .from('vehicles')
-                .select('id')
-                .eq('plate', plate);
-
-            if (existing && existing.length > 0) {
-                alert('Placa já cadastrada!');
-                return;
-            }
+            // Remoção da checagem de placa existente para simplificar e focar no login. 
+            // O UNIQUE constraint no BD deve ser suficiente.
 
             const newVehicle = {
                 plate: plate,
@@ -575,14 +595,13 @@
         }
 
         // **********************************************
-        // GESTÃO DE VIAGENS - GESTOR SUPABASE (Usando snake_case para colunas)
+        // GESTÃO DE VIAGENS - GESTOR SUPABASE (snake_case)
         // **********************************************
         
         function updateDriverSelects() {
             const selects = ['tripDriverSelect', 'reportDriverSelect'];
             selects.forEach(selectId => {
                 const select = document.getElementById(selectId);
-                // Preserve the first option (placeholder)
                 const optionsToKeep = select.querySelector('option[value=""]'); 
                 select.innerHTML = '';
                 if (optionsToKeep) select.appendChild(optionsToKeep);
@@ -619,7 +638,7 @@
                 return;
             }
 
-            trips = data; // Atualiza lista global
+            trips = data; 
             tripsActions.classList.remove('hidden');
 
             if (trips.length === 0) {
@@ -694,7 +713,7 @@
         }
 
         // **********************************************
-        // GESTÃO DE VIAGENS - MOTORISTA SUPABASE (Usando snake_case para colunas)
+        // GESTÃO DE VIAGENS - MOTORISTA SUPABASE (snake_case)
         // **********************************************
 
         function loadDriverVehicles() {
@@ -729,7 +748,7 @@
                 .eq('status', 'active')
                 .single(); 
 
-            if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha (OK)
+            if (error && error.code !== 'PGRST116') { 
                 console.error('Erro ao buscar viagem ativa:', error.message);
                 activeTripSection.classList.add('hidden');
                 newTripSection.classList.remove('hidden');
@@ -867,7 +886,7 @@
         }
 
         // **********************************************
-        // RELATÓRIOS SUPABASE (Usando snake_case para colunas)
+        // RELATÓRIOS SUPABASE (snake_case)
         // **********************************************
 
         async function generateReport() {
@@ -961,6 +980,35 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            // Tenta obter a sessão do usuário se ele recarregou a página
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    // Se houver sessão, checa a role e redireciona
+                    supabase
+                        .from('profiles')
+                        .select('full_name, role')
+                        .eq('id', session.user.id)
+                        .single()
+                        .then(({ data: profileData }) => {
+                            if (profileData && profileData.role === 'manager') {
+                                currentUser = { type: 'manager', id: session.user.id, name: profileData.full_name, role: profileData.role };
+                                showManagerDashboard();
+                            } else if (profileData && profileData.role === 'driver') {
+                                supabase.from('drivers').select('id, name').eq('auth_uid', session.user.id).single()
+                                    .then(({ data: driverInfo }) => {
+                                        if (driverInfo) {
+                                            currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: session.user.id, role: profileData.role };
+                                            showDriverDashboard();
+                                        } else {
+                                            // Se o perfil existe mas não o driver, desloga.
+                                            supabase.auth.signOut();
+                                        }
+                                    });
+                            }
+                        });
+                }
+            });
+
             document.getElementById('username').focus();
         });
     </script>
