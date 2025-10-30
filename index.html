@@ -3,971 +3,1089 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FleetControl - Sistema de Controle de Frota</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>Controle de Frota - Supabase</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* 🎨 Estilo: Tema azul e branco, moderno e responsivo */
+        :root {
+            --primary-color: #007bff; /* Azul principal */
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+            --text-color: #343a40;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
         body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-background);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+
+        /* Estilos de Formulário */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: var(--border-radius);
             box-sizing: border-box;
         }
-        .bg-primary { background-color: #6B8E23; }
-        .bg-primary-light { background-color: #8FBC8F; }
-        .bg-primary-dark { background-color: #556B2F; }
-        .text-primary { color: #6B8E23; }
-        .border-primary { border-color: #6B8E23; }
-        .hover\:bg-primary-dark:hover { background-color: #556B2F; }
-        .focus\:border-primary:focus { border-color: #6B8E23; }
-        .focus\:ring-primary:focus { --tw-ring-color: #6B8E23; }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #message {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: var(--border-radius);
+            display: none;
+        }
+
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+
+        /* Estilos dos Painéis */
+        .dashboard {
+            max-width: 1200px;
+            padding: 20px;
+            min-height: 100vh;
+            background-color: var(--background-color);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .header h2 {
+            color: var(--primary-color);
+            margin: 0;
+        }
+
+        .card {
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #e9ecef;
+            cursor: pointer;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            margin-right: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .tab-button.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .tab-content {
+            border: 1px solid #ddd;
+            border-top: none;
+            padding: 20px;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #f1f1f1;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 2px;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-full">
-    <div id="loginScreen" class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8">
-            <div class="text-center">
-                <div class="mx-auto h-16 w-16 bg-primary rounded-full flex items-center justify-center">
-                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <h2 class="mt-6 text-3xl font-extrabold text-gray-900">FleetControl</h2>
-                <p class="mt-2 text-sm text-gray-600">Sistema de Controle de Frota</p>
+<body>
+
+    <div id="login-view" class="container">
+        <h1>Acesso ao Sistema</h1>
+        <div id="message"></div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required>
             </div>
-            <form class="mt-8 space-y-6" onsubmit="handleLogin(event)">
-                <div class="space-y-4">
-                    <div>
-                        <label for="username" class="block text-sm font-medium text-gray-700">Usuário (E-mail)</label>
-                        <input id="username" name="username" type="text" required 
-                               class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm" 
-                               placeholder="Digite seu e-mail (gestor@frota.com)">
-                    </div>
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
-                        <input id="password" name="password" type="password" required 
-                               class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm" 
-                               placeholder="Digite sua senha">
-                    </div>
-                </div>
-                <div>
-                    <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        Entrar
-                    </button>
-                </div>
-                <div class="text-xs text-gray-500 text-center">
-                    <p>Agora use as credenciais criadas no Painel de Auth do Supabase.</p>
-                </div>
-            </form>
-        </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit">Entrar</button>
+        </form>
     </div>
 
-    <div id="managerDashboard" class="hidden min-h-full">
-        <header class="bg-primary shadow">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-6">
-                    <div class="flex items-center">
-                        <h1 class="text-2xl font-bold text-white">FleetControl - Painel do Gestor</h1>
-                    </div>
-                    <button onclick="logout()" class="bg-primary-dark hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Sair
-                    </button>
+    <div id="dashboard-view" class="dashboard" style="display: none;">
+        <div class="header">
+            <h2>Painel de Controle</h2>
+            <button id="logout-btn">Sair</button>
+        </div>
+
+        <div id="admin-dashboard" style="display: none;">
+            <div class="card">
+                <h3>Gestão de Motoristas e Veículos</h3>
+                <button class="tab-button active" onclick="showTab('drivers-tab')">Motoristas</button>
+                <button class="tab-button" onclick="showTab('vehicles-tab')">Veículos</button>
+
+                <div id="drivers-tab" class="tab-content active">
+                    <h4>Gerenciar Motoristas</h4>
+                    <button onclick="showAddDriverModal()">Adicionar Motorista</button>
+                    <div id="drivers-list">
+                        </div>
+                </div>
+
+                <div id="vehicles-tab" class="tab-content">
+                    <h4>Gerenciar Veículos</h4>
+                    <button onclick="showAddVehicleModal()">Adicionar Veículo</button>
+                    <div id="vehicles-list">
+                        </div>
                 </div>
             </div>
-        </header>
+            
+            <div class="card">
+                <h3>Relatórios e Ações de Viagem</h3>
+                <div class="form-group">
+                    <label for="report-driver-select">Motorista para Relatório/Ação:</label>
+                    <select id="report-driver-select"></select>
+                </div>
+                <button onclick="generateReportLast7Days()">Gerar Relatório (7 Dias)</button>
+                <button onclick="generateReportLast30Days()">Gerar Relatório (30 Dias)</button>
+                <button onclick="showTripManagement()">Gerenciar Viagens (Excluir/Zerar KM)</button>
+            </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <div class="border-b border-gray-200">
-                <nav class="-mb-px flex space-x-8">
-                    <button onclick="showTab('drivers')" id="driversTab" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                        Motoristas
-                    </button>
-                    <button onclick="showTab('vehicles')" id="vehiclesTab" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                        Veículos
-                    </button>
-                    <button onclick="showTab('trips')" id="tripsTab" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                        Viagens
-                    </button>
-                    <button onclick="showTab('reports')" id="reportsTab" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                        Relatórios
-                    </button>
-                </nav>
+            <div id="trip-management-modal" class="card" style="display: none;">
+                <h4>Gerenciar Viagens do Motorista Selecionado</h4>
+                <div id="trips-list-admin">
+                    </div>
             </div>
         </div>
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div id="driversContent" class="tab-content">
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">Gestão de Motoristas</h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <h4 class="text-md font-medium text-yellow-800 mb-4">Atenção!</h4>
-                            <p class="text-sm text-yellow-700">A criação de novos motoristas deve ser feita no Painel de Auth do Supabase (para criar o e-mail/senha). O registro aqui é automático via RLS.</p>
-                        </div>
-
-                        <div>
-                            <h4 class="text-md font-medium text-gray-900 mb-4">Motoristas Cadastrados</h4>
-                            <div id="driversList" class="space-y-3">
-                                </div>
-                        </div>
-                    </div>
+        <div id="driver-dashboard" style="display: none;">
+            <div class="card">
+                <h3>Painel do Motorista: Iniciar/Finalizar Viagem</h3>
+                <div class="form-group">
+                    <label for="driver-vehicle-select">Selecione o Veículo:</label>
+                    <select id="driver-vehicle-select"></select>
                 </div>
+                <div class="form-group">
+                    <label for="driver-destino">Destino:</label>
+                    <input type="text" id="driver-destino" required>
+                </div>
+                <div class="form-group">
+                    <label for="driver-km-inicial">Km Inicial:</label>
+                    <input type="number" id="driver-km-inicial" required step="0.01">
+                </div>
+                <button onclick="startTrip()">Iniciar Viagem</button>
+
+                <hr style="margin: 20px 0;">
+
+                <h4>Finalizar Viagem Atual</h4>
+                <div class="form-group">
+                    <label for="driver-km-final">Km Final:</label>
+                    <input type="number" id="driver-km-final" step="0.01">
+                </div>
+                <button onclick="finishTrip()">Finalizar Viagem</button>
             </div>
 
-            <div id="vehiclesContent" class="tab-content hidden">
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">Gestão de Veículos</h3>
+            <div class="card">
+                <h4>Minhas Viagens Ativas e Concluídas</h4>
+                <div id="driver-trips-list">
                     </div>
-                    <div class="p-6">
-                        <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h4 class="text-md font-medium text-gray-900 mb-4">Adicionar Veículo</h4>
-                            <form onsubmit="addVehicle(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="vehiclePlate" class="block text-sm font-medium text-gray-700">Placa</label>
-                                    <input type="text" id="vehiclePlate" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                </div>
-                                <div>
-                                    <label for="vehicleModel" class="block text-sm font-medium text-gray-700">Modelo</label>
-                                    <input type="text" id="vehicleModel" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                </div>
-                                <div class="flex items-end">
-                                    <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium">
-                                        Adicionar
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div>
-                            <h4 class="text-md font-medium text-gray-900 mb-4">Veículos Cadastrados</h4>
-                            <div id="vehiclesList" class="space-y-3">
-                                </div>
-                        </div>
-                    </div>
-                </div>
             </div>
+        </div>
 
-            <div id="tripsContent" class="tab-content hidden">
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">Gestão de Viagens</h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="mb-6">
-                            <label for="tripDriverSelect" class="block text-sm font-medium text-gray-700 mb-2">Selecionar Motorista</label>
-                            <select id="tripDriverSelect" onchange="loadDriverTrips()" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                <option value="">Selecione um motorista</option>
-                            </select>
-                        </div>
-
-                        <div id="tripsActions" class="hidden mb-6 flex space-x-4">
-                            <button onclick="clearAllTrips()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                                Zerar Todas as Viagens
-                            </button>
-                        </div>
-
-                        <div id="tripsList">
-                            </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="reportsContent" class="tab-content hidden">
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">Geração de Relatórios</h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div>
-                                <label for="reportDriverSelect" class="block text-sm font-medium text-gray-700 mb-2">Motorista</label>
-                                <select id="reportDriverSelect" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                    <option value="">Selecione um motorista</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="reportPeriod" class="block text-sm font-medium text-gray-700 mb-2">Período</label>
-                                <select id="reportPeriod" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                    <option value="7">Últimos 7 dias</option>
-                                    <option value="30">Últimos 30 dias</option>
-                                </select>
-                            </div>
-                            <div class="flex items-end">
-                                <button onclick="generateReport()" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium">
-                                    Gerar Relatório PDF
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
     </div>
 
-    <div id="driverDashboard" class="hidden min-h-full">
-        <header class="bg-primary shadow">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-6">
-                    <div class="flex items-center">
-                        <h1 class="text-2xl font-bold text-white">FleetControl - Painel do Motorista</h1>
-                    </div>
-                    <button onclick="logout()" class="bg-primary-dark hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Sair
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div id="activeTripSection" class="hidden mb-8">
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                    <h3 class="text-lg font-medium text-yellow-800 mb-4">Viagem em Andamento</h3>
-                    <div id="activeTripDetails" class="mb-4">
-                        </div>
-                    <div class="flex space-x-4">
-                        <div class="flex-1">
-                            <label for="finalKm" class="block text-sm font-medium text-gray-700 mb-2">KM Final</label>
-                            <input type="number" id="finalKm" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                        </div>
-                        <div class="flex items-end">
-                            <button onclick="finishTrip()" class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-md text-sm font-medium">
-                                Concluir Viagem
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="newTripSection" class="bg-white shadow rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Registrar Nova Viagem</h3>
-                </div>
-                <div class="p-6">
-                    <form onsubmit="startTrip(event)" class="space-y-4">
-                        <div>
-                            <label for="tripDestination" class="block text-sm font-medium text-gray-700 mb-2">Destino</label>
-                            <input type="text" id="tripDestination" required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                        </div>
-                        <div>
-                            <label for="tripVehicle" class="block text-sm font-medium text-gray-700 mb-2">Veículo</label>
-                            <select id="tripVehicle" required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                                <option value="">Selecione um veículo</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="initialKm" class="block text-sm font-medium text-gray-700 mb-2">KM Inicial</label>
-                            <input type="number" id="initialKm" required class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                        </div>
-                        <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-3 rounded-md text-sm font-medium">
-                            Iniciar Viagem
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="mt-8 bg-white shadow rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Histórico de Viagens</h3>
-                </div>
-                <div class="p-6">
-                    <div id="driverTripHistory">
-                        </div>
-                </div>
-            </div>
-        </main>
+    <div id="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="background: white; margin: 10% auto; padding: 20px; width: 80%; max-width: 500px; border-radius: var(--border-radius); box-shadow: var(--shadow);">
+            <h4 id="modal-title">Título do Modal</h4>
+            <form id="modal-form">
+                </form>
+            <button style="background: var(--secondary-color); margin-top: 15px;" onclick="closeModal()">Fechar</button>
+        </div>
     </div>
+
 
     <script>
-        // **********************************************
-        // CONFIGURAÇÃO SUPABASE (CORRIGIDA - INICIALIZAÇÃO JS)
-        // **********************************************
+        // ------------------------------------------------------
+        // ⚙️ CONFIGURAÇÃO DO SUPABASE
+        // Substitua pelas suas chaves reais do Supabase
+        // ------------------------------------------------------
         const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8';
 
-        // LINHA CORRIGIDA: Resolve o erro 'Cannot access 'supabase' before initialization'
-        var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (SUPABASE_URL === 'SUA_URL_DO_SUPABASE' || SUPABASE_ANON_KEY === 'SUA_CHAVE_ANON_DO_SUPABASE') {
+            alert("ATENÇÃO: Por favor, configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY no script.");
+        }
 
-        let currentUser = null; 
-        let drivers = [];   
-        let vehicles = [];  
-        let trips = [];     
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        let CURRENT_USER = user;
 
-        // **********************************************
-        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA SÓ USA TABELA 'drivers')
-        // **********************************************
+        // ------------------------------------------------------
+        // 🔠 FUNÇÕES GLOBAIS E UTILITÁRIOS
+        // ------------------------------------------------------
 
-        async function handleLogin(event) {
-            event.preventDefault();
-            const email = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            // 1. Tenta autenticar via Supabase Auth
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: email, 
-                password: password,
-            });
+        /** Mostra uma mensagem na tela de login. */
+        function showMessage(msg, type = 'error') {
+            const msgElement = document.getElementById('message');
+            msgElement.textContent = msg;
+            msgElement.className = type === 'success' ? 'success' : 'error';
+            msgElement.style.display = 'block';
+            setTimeout(() => {
+                msgElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        /** Mostra/Esconde as views de dashboard com base no usuário. */
+        async function initializeApp() {
+            const loginView = document.getElementById('login-view');
+            const dashboardView = document.getElementById('dashboard-view');
             
-            if (authError) {
-                alert('Erro de login: Usuário ou senha incorretos, ou e-mail não confirmado.');
-                return;
+            const { data: { user } } = await supabase.auth.getSession();
+            CURRENT_USER = user;
+
+            if (user) {
+                loginView.style.display = 'none';
+                dashboardView.style.display = 'block';
+                await loadUserData(user.id);
+            } else {
+                dashboardView.style.display = 'none';
+                loginView.style.display = 'flex';
+                document.getElementById('admin-dashboard').style.display = 'none';
+                document.getElementById('driver-dashboard').style.display = 'none';
             }
+        }
 
-            // O login Auth foi bem-sucedido. Busca AGORA o ID e a ROLE na tabela 'drivers'
-            const userUid = authData.user.id;
-            
-            const { data: driverData, error: driverError } = await supabase
-                .from('drivers')
-                .select('id, name, role, username') // Adicionado 'username' e 'role'
-                .eq('auth_uid', userUid)  // Busca pelo UUID de Auth
+        /** Carrega dados do usuário e redireciona para o painel correto. */
+        async function loadUserData(userId) {
+            const { data, error } = await supabase
+                .from('motoristas')
+                .select('role')
+                .eq('id', userId)
                 .single();
 
-            if (driverError || !driverData) {
-                // Erro de perfil: ocorre se a linha na tabela drivers não existir ou RLS bloquear
-                alert('Perfil não encontrado na tabela DRIVERS. O login foi bem-sucedido, mas o perfil (role/nome) não está configurado corretamente.');
-                await supabase.auth.signOut();
+            if (error) {
+                console.error("Erro ao buscar perfil do usuário:", error);
+                showMessage("Erro ao carregar perfil. Tente novamente.", 'error');
                 return;
             }
 
-            // 3. Redireciona com base na ROLE
-            if (driverData.role === 'manager') {
-                // currentUser.id é o ID numérico (bigint) da tabela drivers
-                currentUser = { type: 'manager', id: driverData.id, name: driverData.name, auth_uid: userUid };
-                showManagerDashboard();
-            } else if (driverData.role === 'driver') {
-                currentUser = { type: 'driver', id: driverData.id, name: driverData.name, auth_uid: userUid };
-                showDriverDashboard();
+            if (data && data.role === 'admin') {
+                document.getElementById('admin-dashboard').style.display = 'block';
+                document.getElementById('driver-dashboard').style.display = 'none';
+                loadAdminData();
+            } else if (data && data.role === 'motorista') {
+                document.getElementById('admin-dashboard').style.display = 'none';
+                document.getElementById('driver-dashboard').style.display = 'block';
+                loadDriverData(userId);
             } else {
-                alert('Role desconhecida. Logoff.');
-                await supabase.auth.signOut();
+                console.warn("Usuário sem função definida ou não encontrado:", data);
+                showMessage("Usuário não autorizado ou sem função. Faça logout.", 'error');
+                document.getElementById('admin-dashboard').style.display = 'none';
+                document.getElementById('driver-dashboard').style.display = 'none';
             }
         }
 
-        async function logout() {
-            await supabase.auth.signOut(); 
+        /** Função para trocar as abas do painel do gestor. */
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
             
-            currentUser = null;
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('managerDashboard').classList.add('hidden');
-            document.getElementById('driverDashboard').classList.add('hidden');
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.tab-button[onclick*="${tabId}"]`).classList.add('active');
         }
 
-        function showManagerDashboard() {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('managerDashboard').classList.remove('hidden');
-            showTab('drivers');
-            loadDriversData();
-            loadVehiclesData();
-        }
+        // ------------------------------------------------------
+        // 🚪 FUNÇÕES DE AUTENTICAÇÃO
+        // ------------------------------------------------------
 
-        async function showDriverDashboard() {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('driverDashboard').classList.remove('hidden');
-            await loadVehiclesData(); 
-            loadDriverVehicles();
-            checkActiveTrip();
-            loadDriverTripHistory();
-        }
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-        // Tab Management
-        function showTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
+            // Nota: O Supabase Auth gerencia senhas para o signUp/signIn. 
+            // No nosso caso, vamos usar 'signInWithPassword' para o login, 
+            // mas o 'role' vem da nossa tabela 'motoristas'.
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
             });
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.classList.remove('border-primary', 'text-primary');
-                button.classList.add('border-transparent', 'text-gray-500');
-            });
-            document.getElementById(tabName + 'Content').classList.remove('hidden');
-            const activeTab = document.getElementById(tabName + 'Tab');
-            activeTab.classList.remove('border-transparent', 'text-gray-500');
-            activeTab.classList.add('border-primary', 'text-primary');
-
-            // Chamada de recarregamento ao mudar de aba
-            if (tabName === 'drivers') loadDriversData();
-            if (tabName === 'vehicles') loadVehiclesData();
-            if (tabName === 'trips' || tabName === 'reports') {
-                updateDriverSelects();
-                document.getElementById('tripDriverSelect').value = '';
-                document.getElementById('tripsList').innerHTML = '';
-            }
-        }
-
-        // **********************************************
-        // GESTÃO DE MOTORISTAS SUPABASE (Ajustada para RLS e Auth)
-        // **********************************************
-
-        async function loadDriversData() {
-            const driversList = document.getElementById('driversList');
-            driversList.innerHTML = '<p class="text-gray-500">Carregando motoristas...</p>';
-
-            // Adicionado 'auth_uid' no select, essencial para exclusão/alteração de senha
-            const { data, error } = await supabase
-                .from('drivers')
-                .select('id, name, username, auth_uid')
-                .order('name', { ascending: true });
 
             if (error) {
-                driversList.innerHTML = `<p class="text-red-500">Erro ao carregar motoristas: ${error.message}</p>`;
+                showMessage("Erro no login: " + error.message, 'error');
                 return;
             }
             
-            drivers = data; // Atualiza a lista global
-            updateDriverSelects();
+            showMessage("Login bem-sucedido!", 'success');
+            initializeApp(); // Redireciona e carrega dados
+        });
 
-            driversList.innerHTML = '';
-            if (drivers.length === 0) {
-                driversList.innerHTML = '<p class="text-gray-500">Nenhum motorista cadastrado.</p>';
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error("Erro ao fazer logout:", error.message);
+            }
+            CURRENT_USER = null;
+            initializeApp(); // Volta para a tela de login
+        });
+
+        // ------------------------------------------------------
+        // 🧑‍💼 FUNÇÕES DO PAINEL DO GESTOR (ADMIN)
+        // ------------------------------------------------------
+
+        async function loadAdminData() {
+            await loadDriversList();
+            await loadVehiclesList();
+            await populateDriverSelects();
+        }
+
+        // --- Gestão de Motoristas ---
+
+        async function loadDriversList() {
+            const { data: drivers, error } = await supabase
+                .from('motoristas')
+                .select('id, nome, email, role');
+
+            const listDiv = document.getElementById('drivers-list');
+            listDiv.innerHTML = '';
+
+            if (error) {
+                listDiv.innerHTML = `<p class="error">Erro ao carregar motoristas: ${error.message}</p>`;
                 return;
             }
-            
+
+            if (!drivers || drivers.length === 0) {
+                listDiv.innerHTML = '<p>Nenhum motorista cadastrado.</p>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>Nome</th><th>Email</th><th>Role</th><th>Ações</th></tr></thead><tbody>';
             drivers.forEach(driver => {
-                const driverDiv = document.createElement('div');
-                driverDiv.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
-                driverDiv.innerHTML = `
-                    <div>
-                        <h5 class="font-medium text-gray-900">${driver.name}</h5>
-                        <p class="text-sm text-gray-500">Usuário: ${driver.username}</p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="changeDriverPassword('${driver.auth_uid}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-                            Alterar Senha
-                        </button>
-                        <button onclick="deleteDriver('${driver.auth_uid}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
-                            Excluir
-                        </button>
-                    </div>
+                html += `
+                    <tr>
+                        <td>${driver.nome}</td>
+                        <td>${driver.email}</td>
+                        <td>${driver.role}</td>
+                        <td>
+                            <button class="btn-small" onclick="showEditDriverModal('${driver.id}', '${driver.nome}', '${driver.email}', '${driver.role}')">Alterar Senha</button>
+                            <button class="btn-small" style="background-color: #dc3545;" onclick="deleteDriver('${driver.id}', '${driver.nome}')">Excluir</button>
+                        </td>
+                    </tr>
                 `;
-                driversList.appendChild(driverDiv);
             });
+            html += '</tbody></table>';
+            listDiv.innerHTML = html;
         }
 
-        async function addDriver(event) {
-            event.preventDefault();
-            alert('Motoristas devem ser criados/convidados diretamente no Painel de Autenticação do Supabase (Authentication -> Users). O RLS e os Triggers se encarregam de criar o perfil no banco de dados.');
+        function showAddDriverModal() {
+            document.getElementById('modal-title').textContent = 'Adicionar Novo Motorista';
+            document.getElementById('modal-form').innerHTML = `
+                <div class="form-group"><label>Nome</label><input type="text" id="modal-driver-nome" required></div>
+                <div class="form-group"><label>Email</label><input type="email" id="modal-driver-email" required></div>
+                <div class="form-group"><label>Senha Inicial (Usuário deverá alterar/usar para login)</label><input type="password" id="modal-driver-senha" required></div>
+                <input type="hidden" id="modal-driver-id" value="">
+                <input type="hidden" id="modal-driver-role" value="motorista">
+            `;
+            const modalForm = document.getElementById('modal-form');
+            modalForm.onsubmit = handleAddOrUpdateDriver;
+            document.getElementById('modal-backdrop').style.display = 'block';
         }
 
-        // Função de alteração de senha atualizada para usar o Supabase Auth (Apenas placeholder, requer Admin)
-        async function changeDriverPassword(driverAuthUid) {
-            alert('A alteração de senha de outro usuário (Gestor para Motorista) requer uma Função de Administrador ou Edge Function do Supabase (Admin API). \n\nPara o front-end, o motorista deve usar o fluxo de "esqueci minha senha" do Supabase Auth, que envia um e-mail de redefinição.');
-        }
+        async function handleAddOrUpdateDriver(e) {
+            e.preventDefault();
+            const id = document.getElementById('modal-driver-id').value;
+            const nome = document.getElementById('modal-driver-nome').value;
+            const email = document.getElementById('modal-driver-email').value;
+            const senha = document.getElementById('modal-driver-senha').value;
+            const role = document.getElementById('modal-driver-role').value;
 
-        // Função de exclusão atualizada para excluir do Auth
-        async function deleteDriver(driverAuthUid) {
-            if (confirm('Tem certeza que deseja excluir este motorista? O usuário Auth, o registro Driver e todas as Viagens (trips) dele serão removidos.')) {
-                
-                // Primeiro, excluímos o registro do driver.
-                // Idealmente, a exclusão em auth.users faria um CASCADE para drivers e trips.
-                // Aqui vamos excluir manualmente o driver para garantir que o usuário Auth seja o próximo.
-                const { error: driverError } = await supabase
-                    .from('drivers')
-                    .delete()
-                    .eq('auth_uid', driverAuthUid);
-
-                if (driverError) {
-                    alert('Erro ao excluir registro do driver: ' + driverError.message);
-                    return;
-                }
-
-                // Em seguida, excluímos o usuário Auth (isso exclui o login)
-                 const { error: authError } = await supabase.auth.admin.deleteUser(driverAuthUid);
-
-                if (authError) {
-                    alert('Erro ao excluir usuário Auth: ' + authError.message);
-                    return;
-                }
-                
-                loadDriversData();
-            }
-        }
-
-        // **********************************************
-        // GESTÃO DE VEÍCULOS SUPABASE (Usando snake_case para colunas)
-        // **********************************************
-
-        async function loadVehiclesData() {
-            const vehiclesList = document.getElementById('vehiclesList');
-            vehiclesList.innerHTML = '<p class="text-gray-500">Carregando veículos...</p>';
-
-            const { data, error } = await supabase
-                .from('vehicles')
-                .select('*')
-                .order('plate', { ascending: true });
-
-            if (error) {
-                vehiclesList.innerHTML = `<p class="text-red-500">Erro ao carregar veículos: ${error.message}</p>`;
-                return;
-            }
-            
-            vehicles = data; // Atualiza a lista global
-
-            vehiclesList.innerHTML = '';
-            if (vehicles.length === 0) {
-                vehiclesList.innerHTML = '<p class="text-gray-500">Nenhum veículo cadastrado.</p>';
-                return;
-            }
-            
-            vehicles.forEach(vehicle => {
-                const vehicleDiv = document.createElement('div');
-                vehicleDiv.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
-                vehicleDiv.innerHTML = `
-                    <div>
-                        <h5 class="font-medium text-gray-900">${vehicle.plate}</h5>
-                        <p class="text-sm text-gray-500">${vehicle.model}</p>
-                    </div>
-                    <button onclick="deleteVehicle(${vehicle.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
-                        Excluir
-                    </button>
-                `;
-                vehiclesList.appendChild(vehicleDiv);
-            });
-        }
-
-        async function addVehicle(event) {
-            event.preventDefault();
-            const plate = document.getElementById('vehiclePlate').value;
-            const model = document.getElementById('vehicleModel').value;
-
-            const { data: existing } = await supabase
-                .from('vehicles')
-                .select('id')
-                .eq('plate', plate);
-
-            if (existing && existing.length > 0) {
-                alert('Placa já cadastrada!');
-                return;
-            }
-
-            const newVehicle = {
-                plate: plate,
-                model: model
-            };
-
-            const { error } = await supabase
-                .from('vehicles')
-                .insert([newVehicle]);
-
-            if (error) {
-                alert('Erro ao adicionar veículo: ' + error.message);
-                return;
-            }
-
-            document.getElementById('vehiclePlate').value = '';
-            document.getElementById('vehicleModel').value = '';
-            loadVehiclesData();
-        }
-
-        async function deleteVehicle(vehicleId) {
-            if (confirm('Tem certeza que deseja excluir este veículo?')) {
+            if (id) {
+                // Atualização (Apenas senha e role no backend) - Mudança de senha é complexa com Supabase Auth + DB.
+                // Aqui, vamos apenas atualizar o DB para simplificar, pois a senha do Auth deve ser gerenciada por ele.
                 const { error } = await supabase
-                    .from('vehicles')
-                    .delete()
-                    .eq('id', vehicleId);
+                    .from('motoristas')
+                    .update({ nome, email, role })
+                    .eq('id', id);
 
                 if (error) {
-                    alert('Erro ao excluir veículo: ' + error.message);
+                    showMessage(`Erro ao atualizar motorista: ${error.message}`);
+                    return;
+                }
+                showMessage(`Motorista ${nome} atualizado com sucesso!`, 'success');
+            } else {
+                // Adicionar Motorista (No Supabase Auth + DB)
+                // 1. Cria o usuário no Auth (Isso não cria o registro na tabela 'motoristas')
+                const { user: newUser, error: authError } = await supabase.auth.admin.createUser({
+                    email: email,
+                    password: senha,
+                    data: { role: role, nome: nome }
+                });
+
+                if (authError) {
+                    showMessage(`Erro ao criar usuário/motorista: ${authError.message}. Verifique se o email já existe ou se sua chave de Admin está correta.`, 'error');
                     return;
                 }
                 
-                loadVehiclesData();
+                // 2. Insere o registro na tabela 'motoristas'
+                const { error: dbError } = await supabase
+                    .from('motoristas')
+                    .insert({ id: newUser.id, nome, email, role, senha: senha }); // Guardando senha temporariamente no DB como solicitado
+
+                if (dbError) {
+                    console.error("Erro ao inserir no DB motoristas:", dbError);
+                    showMessage(`Usuário criado no Auth, mas falha ao inserir no DB: ${dbError.message}`, 'error');
+                    return;
+                }
+                
+                showMessage(`Motorista ${nome} adicionado com sucesso!`, 'success');
             }
+
+            closeModal();
+            loadDriversList();
+            populateDriverSelects();
         }
 
-        // **********************************************
-        // GESTÃO DE VIAGENS - GESTOR SUPABASE (Usando snake_case para colunas)
-        // **********************************************
-        
-        function updateDriverSelects() {
-            const selects = ['tripDriverSelect', 'reportDriverSelect'];
-            selects.forEach(selectId => {
-                const select = document.getElementById(selectId);
-                // Preserve the first option (placeholder)
-                const optionsToKeep = select.querySelector('option[value=""]'); 
-                select.innerHTML = '';
-                if (optionsToKeep) select.appendChild(optionsToKeep);
+        function showEditDriverModal(id, nome, email, role) {
+            document.getElementById('modal-title').textContent = `Alterar Senha/Dados do Motorista: ${nome}`;
+            document.getElementById('modal-form').innerHTML = `
+                <div class="form-group"><label>Nome</label><input type="text" id="modal-driver-nome" value="${nome}" required></div>
+                <div class="form-group"><label>Email</label><input type="email" id="modal-driver-email" value="${email}" required></div>
+                <div class="form-group"><label>Nova Senha (Opcional)</label><input type="password" id="modal-driver-senha" placeholder="Deixe em branco para não alterar a senha no Auth"></div>
+                <div class="form-group"><label>Role</label><select id="modal-driver-role"><option value="motorista" ${role === 'motorista' ? 'selected' : ''}>motorista</option><option value="admin" ${role === 'admin' ? 'selected' : ''}>admin</option></select></div>
+                <input type="hidden" id="modal-driver-id" value="${id}">
+            `;
+            const modalForm = document.getElementById('modal-form');
+            modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const newNome = document.getElementById('modal-driver-nome').value;
+                const newEmail = document.getElementById('modal-driver-email').value;
+                const newSenha = document.getElementById('modal-driver-senha').value;
+                const newRole = document.getElementById('modal-driver-role').value;
 
-                drivers.forEach(driver => {
-                    const option = document.createElement('option');
-                    option.value = driver.id; // ID Numérico (bigint)
-                    option.textContent = driver.name;
-                    select.appendChild(option);
-                });
-            });
+                let updateData = { nome: newNome, email: newEmail, role: newRole };
+                
+                // Apenas atualiza a senha no Auth se um valor for fornecido
+                if (newSenha) {
+                    const { error: authError } = await supabase.auth.admin.updateUserById(id, { password: newSenha });
+                    if (authError) {
+                        showMessage(`Erro ao atualizar senha no Auth: ${authError.message}`, 'error');
+                        return;
+                    }
+                    updateData.senha = newSenha; // Atualiza no DB também
+                }
+
+                const { error: dbError } = await supabase
+                    .from('motoristas')
+                    .update(updateData)
+                    .eq('id', id);
+
+                if (dbError) {
+                    showMessage(`Erro ao atualizar dados no DB: ${dbError.message}`, 'error');
+                    return;
+                }
+
+                showMessage(`Dados do motorista ${nome} atualizados com sucesso!`, 'success');
+                closeModal();
+                loadDriversList();
+                populateDriverSelects();
+            };
+            document.getElementById('modal-backdrop').style.display = 'block';
         }
 
-        async function loadDriverTrips() {
-            const driverId = parseInt(document.getElementById('tripDriverSelect').value);
-            const tripsList = document.getElementById('tripsList');
-            const tripsActions = document.getElementById('tripsActions');
-            
-            tripsActions.classList.add('hidden');
-            tripsList.innerHTML = '';
 
-            if (!driverId) return;
+        async function deleteDriver(id, nome) {
+            if (!confirm(`Tem certeza que deseja excluir o motorista ${nome}?`)) return;
 
-            tripsList.innerHTML = '<p class="text-gray-500">Carregando viagens...</p>';
+            // 1. Excluir do Auth (Necessita de permissão de Admin no Supabase)
+            const { error: authError } = await supabase.auth.admin.deleteUser(id);
+            if (authError) {
+                console.error("Erro ao deletar do Auth:", authError);
+                // Tentativa de deletar do DB mesmo com falha no Auth para limpeza parcial
+            }
             
-            const { data, error } = await supabase
-                .from('trips')
-                .select('*')
-                .eq('driver_id', driverId) // Usa o ID numérico/bigint
-                .order('start_time', { ascending: false });
+            // 2. Excluir da tabela motoristas
+            const { error: dbError } = await supabase.from('motoristas').delete().eq('id', id);
+
+            if (dbError) {
+                showMessage(`Erro ao excluir motorista do banco de dados: ${dbError.message}`, 'error');
+                return;
+            }
+
+            showMessage(`Motorista ${nome} excluído com sucesso.`, 'success');
+            loadDriversList();
+            populateDriverSelects();
+        }
+
+        // --- Gestão de Veículos ---
+
+        async function loadVehiclesList() {
+            const { data: vehicles, error } = await supabase
+                .from('veiculos')
+                .select('id, modelo, placa');
+
+            const listDiv = document.getElementById('vehicles-list');
+            listDiv.innerHTML = '';
 
             if (error) {
-                tripsList.innerHTML = `<p class="text-red-500">Erro ao carregar viagens: ${error.message}</p>`;
+                listDiv.innerHTML = `<p class="error">Erro ao carregar veículos: ${error.message}</p>`;
                 return;
             }
 
-            trips = data; // Atualiza lista global
-            tripsActions.classList.remove('hidden');
-
-            if (trips.length === 0) {
-                tripsList.innerHTML = '<p class="text-gray-500">Nenhuma viagem encontrada.</p>';
+            if (!vehicles || vehicles.length === 0) {
+                listDiv.innerHTML = '<p>Nenhum veículo cadastrado.</p>';
                 return;
             }
-            
-            tripsList.innerHTML = '<div class="space-y-3"></div>';
-            const tripsContainer = tripsList.querySelector('.space-y-3');
 
-            trips.forEach(trip => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); 
-                const tripDiv = document.createElement('div');
-                tripDiv.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
-                
-                const statusBadge = trip.status === 'completed' 
-                    ? '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Concluída</span>'
-                    : '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Em andamento</span>';
-
-                tripDiv.innerHTML = `
-                    <div>
-                        <h5 class="font-medium text-gray-900">${trip.destination}</h5>
-                        <p class="text-sm text-gray-500">${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'Veículo não encontrado'}</p>
-                        <p class="text-sm text-gray-500">Início: ${new Date(trip.start_time).toLocaleString('pt-BR')}</p>
-                        ${trip.end_time ? `<p class="text-sm text-gray-500">Fim: ${new Date(trip.end_time).toLocaleString('pt-BR')}</p>` : ''}
-                        <p class="text-sm text-gray-500">KM: ${trip.initial_km}${trip.final_km ? ' - ' + trip.final_km + ' (' + (trip.final_km - trip.initial_km) + ' km)' : ''}</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        ${statusBadge}
-                        <button onclick="deleteTrip(${trip.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
-                            Excluir
-                        </button>
-                    </div>
+            let html = '<table><thead><tr><th>Modelo</th><th>Placa</th><th>Ações</th></tr></thead><tbody>';
+            vehicles.forEach(vehicle => {
+                html += `
+                    <tr>
+                        <td>${vehicle.modelo}</td>
+                        <td>${vehicle.placa}</td>
+                        <td><button class="btn-small" style="background-color: #dc3545;" onclick="deleteVehicle('${vehicle.id}', '${vehicle.placa}')">Excluir</button></td>
+                    </tr>
                 `;
-                tripsContainer.appendChild(tripDiv);
             });
+            html += '</tbody></table>';
+            listDiv.innerHTML = html;
+        }
+
+        function showAddVehicleModal() {
+            document.getElementById('modal-title').textContent = 'Adicionar Novo Veículo';
+            document.getElementById('modal-form').innerHTML = `
+                <div class="form-group"><label>Modelo</label><input type="text" id="modal-vehicle-modelo" required></div>
+                <div class="form-group"><label>Placa</label><input type="text" id="modal-vehicle-placa" required></div>
+            `;
+            document.getElementById('modal-form').onsubmit = handleAddOrUpdateVehicle;
+            document.getElementById('modal-backdrop').style.display = 'block';
+        }
+
+        async function handleAddOrUpdateVehicle(e) {
+            e.preventDefault();
+            const modelo = document.getElementById('modal-vehicle-modelo').value;
+            const placa = document.getElementById('modal-vehicle-placa').value.toUpperCase();
+
+            const { error } = await supabase
+                .from('veiculos')
+                .insert({ modelo, placa });
+
+            if (error) {
+                showMessage(`Erro ao adicionar veículo: ${error.message}`, 'error');
+                return;
+            }
+
+            showMessage(`Veículo ${modelo} (${placa}) adicionado com sucesso!`, 'success');
+            closeModal();
+            loadVehiclesList();
+            loadDriverVehicleSelect(); // Atualiza a lista do motorista
+        }
+
+        async function deleteVehicle(id, placa) {
+            if (!confirm(`Tem certeza que deseja excluir o veículo placa ${placa}?`)) return;
+
+            const { error } = await supabase.from('veiculos').delete().eq('id', id);
+
+            if (error) {
+                showMessage(`Erro ao excluir veículo: ${error.message}`, 'error');
+                return;
+            }
+
+            showMessage(`Veículo placa ${placa} excluído com sucesso.`, 'success');
+            loadVehiclesList();
+            loadDriverVehicleSelect();
+        }
+
+        // --- Relatórios e Gestão de Viagens (Admin) ---
+
+        async function populateDriverSelects() {
+            const { data: drivers, error } = await supabase.from('motoristas').select('id, nome');
+            const selectEl = document.getElementById('report-driver-select');
+            const driverSelectEl = document.getElementById('driver-vehicle-select'); // Para o motorista
+            selectEl.innerHTML = '';
+            driverSelectEl.innerHTML = '';
+            
+            if (error || !drivers) return;
+
+            drivers.forEach(driver => {
+                const optionAdmin = document.createElement('option');
+                optionAdmin.value = driver.id;
+                optionAdmin.textContent = `${driver.nome} (${driver.id.substring(0, 4)}...)`;
+                selectEl.appendChild(optionAdmin);
+
+                if (CURRENT_USER && CURRENT_USER.id === driver.id) {
+                    const optionDriver = document.createElement('option');
+                    optionDriver.value = driver.id;
+                    optionDriver.textContent = driver.nome;
+                    driverSelectEl.appendChild(optionDriver);
+                }
+            });
+
+            // Carregar veículos para o gestor, para que ele possa selecionar para o motorista
+            await loadVehiclesList();
+            if (drivers.length > 0) {
+                 driverSelectEl.innerHTML = '<option value="">Selecione um veículo</option>'; // Opção padrão para o motorista
+                document.querySelectorAll('#vehicles-list table tbody tr').forEach((row, index) => {
+                    const placa = row.cells[1].textContent;
+                    const modelo = row.cells[0].textContent;
+                    const id = row.cells[2].querySelector('.btn-small').onclick.toString().match(/'(.*?)'/)[1]; // Pega o ID da função deleteVehicle
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = `${modelo} - ${placa}`;
+                    driverSelectEl.appendChild(option);
+                });
+            }
+        }
+
+        // Função para o gestor visualizar e gerenciar viagens de um motorista específico
+        document.getElementById('report-driver-select').addEventListener('change', showTripManagement);
+        async function showTripManagement() {
+            const driverId = document.getElementById('report-driver-select').value;
+            const tripsDiv = document.getElementById('trips-list-admin');
+            tripsDiv.innerHTML = 'Carregando viagens...';
+
+            if (!driverId) {
+                tripsDiv.innerHTML = '<p>Selecione um motorista para ver as viagens.</p>';
+                return;
+            }
+
+            const { data: trips, error } = await supabase
+                .from('viagens')
+                .select(`
+                    id, 
+                    destino, 
+                    km_inicial, 
+                    km_final, 
+                    data_inicio, 
+                    data_fim, 
+                    status,
+                    veiculos (placa)
+                `)
+                .eq('motorista_id', driverId)
+                .order('data_inicio', { ascending: false });
+
+            if (error) {
+                tripsDiv.innerHTML = `<p class="error">Erro ao carregar viagens: ${error.message}</p>`;
+                return;
+            }
+
+            if (!trips || trips.length === 0) {
+                tripsDiv.innerHTML = '<p>Nenhuma viagem encontrada para este motorista.</p>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>Placa</th><th>Destino</th><th>Início</th><th>Fim</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+            trips.forEach(trip => {
+                const kmPercorrido = (trip.km_final && trip.km_inicial) ? (trip.km_final - trip.km_inicial).toFixed(2) : 'N/A';
+                html += `
+                    <tr>
+                        <td>${trip.veiculos.placa}</td>
+                        <td>${trip.destino}</td>
+                        <td>${new Date(trip.data_inicio).toLocaleString()}</td>
+                        <td>${trip.data_fim ? new Date(trip.data_fim).toLocaleString() : 'Em Aberto'}</td>
+                        <td>${trip.status}</td>
+                        <td>
+                            <button class="btn-small" style="background-color: #dc3545;" onclick="deleteTrip('${trip.id}')">Excluir</button>
+                            ${trip.status !== 'concluída' && trip.km_inicial ? 
+                                `<button class="btn-small" style="background-color: orange;" onclick="resetKmAndFinishTrip('${trip.id}', ${trip.km_inicial})">Finalizar/Zerar KM (Simulado)</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            tripsDiv.innerHTML = html;
         }
 
         async function deleteTrip(tripId) {
-            if (confirm('Tem certeza que deseja excluir esta viagem?')) {
-                const { error } = await supabase
-                    .from('trips')
-                    .delete()
-                    .eq('id', tripId);
+            if (!confirm("Tem certeza que deseja excluir esta viagem?")) return;
 
-                if (error) {
-                    alert('Erro ao excluir viagem: ' + error.message);
-                    return;
-                }
-                
-                loadDriverTrips();
+            const { error } = await supabase.from('viagens').delete().eq('id', tripId);
+            if (error) {
+                showMessage(`Erro ao excluir viagem: ${error.message}`, 'error');
+                return;
             }
+            showMessage('Viagem excluída com sucesso!', 'success');
+            showTripManagement(); // Recarrega a lista
         }
 
-        async function clearAllTrips() {
-            const driverId = parseInt(document.getElementById('tripDriverSelect').value);
-            if (!driverId) return;
+        async function resetKmAndFinishTrip(tripId, kmInicial) {
+             if (!confirm("Tem certeza que deseja FINALIZAR a viagem como 'concluída' E zerar a quilometragem (Definir KM Final = KM Inicial)? Isso é para corrigir um erro de inserção.")) return;
 
-            if (confirm('Tem certeza que deseja zerar todas as viagens deste motorista?')) {
-                const { error } = await supabase
-                    .from('trips')
-                    .delete()
-                    .eq('driver_id', driverId); 
+             const { error } = await supabase
+                .from('viagens')
+                .update({ km_final: kmInicial, data_fim: new Date().toISOString(), status: 'concluída' })
+                .eq('id', tripId);
 
-                if (error) {
-                    alert('Erro ao zerar viagens: ' + error.message);
-                    return;
-                }
-                
-                loadDriverTrips();
+            if (error) {
+                showMessage(`Erro ao finalizar/zerar viagem: ${error.message}`, 'error');
+                return;
             }
+            showMessage('Viagem finalizada e KM zerado com sucesso!', 'success');
+            showTripManagement();
         }
 
-        // **********************************************
-        // GESTÃO DE VIAGENS - MOTORISTA SUPABASE (Usando snake_case para colunas)
-        // **********************************************
+        // --- Geração de Relatório PDF (jsPDF) ---
+        async function generateReport(days) {
+            const driverId = document.getElementById('report-driver-select').value;
+            if (!driverId) {
+                showMessage("Selecione um motorista para gerar o relatório.", 'error');
+                return;
+            }
 
-        function loadDriverVehicles() {
-            const select = document.getElementById('tripVehicle');
-            const optionsToKeep = select.querySelector('option[value=""]');
-            select.innerHTML = '';
-            if (optionsToKeep) select.appendChild(optionsToKeep);
+            const driverName = document.getElementById('report-driver-select').options[document.getElementById('report-driver-select').selectedIndex].text.split(' (')[0];
+            
+            const dateLimit = new Date();
+            dateLimit.setDate(dateLimit.getDate() - days);
+
+            const { data: trips, error } = await supabase
+                .from('viagens')
+                .select(`
+                    id, 
+                    destino, 
+                    km_inicial, 
+                    km_final, 
+                    data_inicio, 
+                    data_fim,
+                    veiculos (modelo, placa)
+                `)
+                .eq('motorista_id', driverId)
+                .gte('data_inicio', dateLimit.toISOString())
+                .eq('status', 'concluída')
+                .order('data_inicio', { ascending: false });
+
+            if (error) {
+                showMessage(`Erro ao buscar dados para relatório: ${error.message}`, 'error');
+                return;
+            }
+
+            if (!trips || trips.length === 0) {
+                showMessage(`Nenhuma viagem concluída nos últimos ${days} dias para ${driverName}.`, 'error');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: "p",
+                unit: "mm",
+                format: "a4"
+            });
+
+            doc.setFontSize(18);
+            doc.text(`Relatório de Viagens - ${driverName}`, 20, 20);
+            doc.setFontSize(12);
+            doc.text(`Período: Últimos ${days} dias`, 20, 28);
+            
+            let y = 40;
+            const rowHeight = 10;
+            const margin = 20;
+
+            trips.forEach((trip, index) => {
+                const dataInicio = new Date(trip.data_inicio).toLocaleDateString('pt-BR');
+                const dataFim = trip.data_fim ? new Date(trip.data_fim).toLocaleDateString('pt-BR') : 'N/A';
+                const kmPercorrido = (trip.km_final && trip.km_inicial) ? (trip.km_final - trip.km_inicial).toFixed(2) : 'N/A';
+                
+                doc.setFont(undefined, 'bold');
+                doc.text(`Viagem #${index + 1}`, margin, y);
+                doc.setFont(undefined, 'normal');
+                
+                doc.text(`Veículo: ${trip.veiculos.modelo} (${trip.veiculos.placa})`, margin, y + rowHeight);
+                doc.text(`Destino: ${trip.destino}`, margin, y + rowHeight * 2);
+                doc.text(`Data Início: ${dataInicio}`, margin, y + rowHeight * 3);
+                doc.text(`Data Fim: ${dataFim}`, margin, y + rowHeight * 4);
+                doc.text(`Km Inicial: ${trip.km_inicial.toFixed(2)}`, margin, y + rowHeight * 5);
+                doc.text(`Km Final: ${trip.km_final ? trip.km_final.toFixed(2) : 'N/A'}`, margin, y + rowHeight * 6);
+                doc.text(`Km Percorrido: ${kmPercorrido}`, margin, y + rowHeight * 7);
+                
+                y += rowHeight * 9; // Pula para a próxima seção
+
+                if (y > 270) { // Verifica se precisa de nova página
+                    doc.addPage();
+                    y = 20;
+                }
+            });
+
+            // Campo de assinatura
+            doc.setFont(undefined, 'bold');
+            doc.text("Assinatura do Gestor:", margin, y + 20);
+            doc.line(margin + 50, y + 30, margin + 150, y + 30); // Linha de assinatura
+            doc.setFont(undefined, 'normal');
+            doc.text(`Relatório gerado em: ${new Date().toLocaleString()}`, margin, 280);
+
+            doc.save(`Relatorio_Viagens_${driverName}_${days}dias.pdf`);
+            showMessage(`Relatório de ${days} dias gerado com sucesso!`, 'success');
+        }
+
+        function generateReportLast7Days() {
+            generateReport(7);
+        }
+
+        function generateReportLast30Days() {
+            generateReport(30);
+        }
+
+
+        // ------------------------------------------------------
+        // 🚗 FUNÇÕES DO PAINEL DO MOTORISTA
+        // ------------------------------------------------------
+
+        async function loadDriverData(driverId) {
+            // Popula a seleção de veículos
+            await loadDriverVehicleSelect(driverId);
+            // Carrega as viagens do motorista
+            await loadDriverTrips(driverId);
+        }
+
+        async function loadDriverVehicleSelect(driverId) {
+            const selectEl = document.getElementById('driver-vehicle-select');
+            selectEl.innerHTML = '<option value="">Selecione um veículo</option>';
+
+            const { data: vehicles, error } = await supabase.from('veiculos').select('id, modelo, placa');
+            
+            if (error || !vehicles) return;
 
             vehicles.forEach(vehicle => {
                 const option = document.createElement('option');
                 option.value = vehicle.id;
-                option.textContent = `${vehicle.plate} - ${vehicle.model}`;
-                select.appendChild(option);
+                option.textContent = `${vehicle.modelo} - ${vehicle.placa}`;
+                selectEl.appendChild(option);
             });
         }
 
-        async function checkActiveTrip() {
-            const activeTripSection = document.getElementById('activeTripSection');
-            const newTripSection = document.getElementById('newTripSection');
+        async function loadDriverTrips(driverId) {
+            const tripsDiv = document.getElementById('driver-trips-list');
+            tripsDiv.innerHTML = 'Carregando minhas viagens...';
 
-            // Verifica se o currentUser está definido e é um motorista
-            if (!currentUser || currentUser.type !== 'driver') {
-                 activeTripSection.classList.add('hidden');
-                 newTripSection.classList.add('hidden'); 
-                 return;
-            }
-            
-            const { data: activeTrip, error } = await supabase
-                .from('trips')
-                .select('*')
-                .eq('driver_id', currentUser.id) // Usa o ID numérico/bigint
-                .eq('status', 'active')
-                .single(); 
-
-            if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha (OK)
-                console.error('Erro ao buscar viagem ativa:', error.message);
-                activeTripSection.classList.add('hidden');
-                newTripSection.classList.remove('hidden');
-            }
-
-            if (activeTrip) {
-                const vehicle = vehicles.find(v => v.id === activeTrip.vehicle_id); 
-                document.getElementById('activeTripDetails').innerHTML = `
-                    <p><strong>Destino:</strong> ${activeTrip.destination}</p>
-                    <p><strong>Veículo:</strong> ${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'N/A'}</p>
-                    <p><strong>KM Inicial:</strong> ${activeTrip.initial_km}</p>
-                    <p><strong>Início:</strong> ${new Date(activeTrip.start_time).toLocaleString('pt-BR')}</p>
-                `;
-                activeTripSection.classList.remove('hidden');
-                newTripSection.classList.add('hidden');
-            } else {
-                activeTripSection.classList.add('hidden');
-                newTripSection.classList.remove('hidden');
-            }
-        }
-
-        async function startTrip(event) {
-            event.preventDefault();
-            const destination = document.getElementById('tripDestination').value;
-            const vehicleId = parseInt(document.getElementById('tripVehicle').value);
-            const initialKm = parseInt(document.getElementById('initialKm').value);
-
-            const newTrip = {
-                driver_id: currentUser.id, // ID numérico/bigint
-                destination: destination,
-                vehicle_id: vehicleId, 
-                initial_km: initialKm, 
-                start_time: new Date().toISOString(), 
-                status: 'active'
-            };
-
-            const { error } = await supabase
-                .from('trips')
-                .insert([newTrip]);
+            const { data: trips, error } = await supabase
+                .from('viagens')
+                .select(`
+                    id, 
+                    destino, 
+                    km_inicial, 
+                    km_final, 
+                    data_inicio, 
+                    data_fim, 
+                    status,
+                    veiculos (modelo, placa)
+                `)
+                .eq('motorista_id', driverId)
+                .order('data_inicio', { ascending: false });
 
             if (error) {
-                alert('Erro ao iniciar viagem: ' + error.message);
+                tripsDiv.innerHTML = `<p class="error">Erro ao carregar suas viagens: ${error.message}</p>`;
                 return;
             }
 
-            document.getElementById('tripDestination').value = '';
-            document.getElementById('tripVehicle').value = '';
-            document.getElementById('initialKm').value = '';
+            if (!trips || trips.length === 0) {
+                tripsDiv.innerHTML = '<p>Nenhuma viagem registrada ainda.</p>';
+                return;
+            }
 
-            checkActiveTrip();
-            loadDriverTripHistory();
+            let html = '<table><thead><tr><th>Veículo</th><th>Destino</th><th>Início</th><th>Fim</th><th>Status</th><th>KM Percorrido</th></tr></thead><tbody>';
+            trips.forEach(trip => {
+                const kmPercorrido = (trip.km_final && trip.km_inicial) ? (trip.km_final - trip.km_inicial).toFixed(2) + ' km' : 'Aguardando KM Final';
+                const dataInicio = new Date(trip.data_inicio).toLocaleString();
+                const dataFim = trip.data_fim ? new Date(trip.data_fim).toLocaleString() : 'Em Aberto';
+                
+                html += `
+                    <tr>
+                        <td>${trip.veiculos.modelo} (${trip.veiculos.placa})</td>
+                        <td>${trip.destino}</td>
+                        <td>${dataInicio}</td>
+                        <td>${dataFim}</td>
+                        <td>${trip.status}</td>
+                        <td>${kmPercorrido}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            tripsDiv.innerHTML = html;
+        }
+
+        async function startTrip() {
+            const driverId = CURRENT_USER.id;
+            const veiculo_id = document.getElementById('driver-vehicle-select').value;
+            const destino = document.getElementById('driver-destino').value;
+            const km_inicial = parseFloat(document.getElementById('driver-km-inicial').value);
+
+            if (!veiculo_id || !destino || isNaN(km_inicial) || km_inicial < 0) {
+                showMessage("Preencha todos os campos corretamente para iniciar a viagem.", 'error');
+                return;
+            }
+            
+            // Verifica se já existe uma viagem aberta
+            const { data: openTrip, error: checkError } = await supabase
+                .from('viagens')
+                .select('id')
+                .eq('motorista_id', driverId)
+                .eq('status', 'aberta');
+
+            if (openTrip && openTrip.length > 0) {
+                showMessage("Você já tem uma viagem aberta. Finalize-a antes de iniciar outra.", 'error');
+                return;
+            }
+
+            const { data, error } = await supabase.from('viagens').insert({
+                motorista_id: driverId,
+                veiculo_id: veiculo_id,
+                destino: destino,
+                km_inicial: km_inicial,
+                data_inicio: new Date().toISOString(),
+                status: 'aberta'
+            }).select();
+
+            if (error) {
+                showMessage(`Erro ao iniciar viagem: ${error.message}`, 'error');
+                return;
+            }
+
+            showMessage(`Viagem iniciada para ${destino} com sucesso!`, 'success');
+            document.getElementById('driver-destino').value = '';
+            document.getElementById('driver-km-inicial').value = '';
+            loadDriverTrips(driverId);
         }
 
         async function finishTrip() {
-            const finalKm = parseInt(document.getElementById('finalKm').value);
-            if (!finalKm) {
-                alert('Por favor, informe a KM final.');
+            const driverId = CURRENT_USER.id;
+            const km_final = parseFloat(document.getElementById('driver-km-final').value);
+
+            if (isNaN(km_final) || km_final < 0) {
+                showMessage("Digite um valor válido para a quilometragem final.", 'error');
                 return;
             }
 
-            const { data: activeTrip, error: fetchError } = await supabase
-                .from('trips')
-                .select('*')
-                .eq('driver_id', currentUser.id) // ID numérico/bigint
-                .eq('status', 'active')
-                .single();
+            // 1. Encontrar a viagem aberta
+            const { data: openTrips, error: checkError } = await supabase
+                .from('viagens')
+                .select('id, km_inicial')
+                .eq('motorista_id', driverId)
+                .eq('status', 'aberta')
+                .limit(1);
+
+            if (checkError || !openTrips || openTrips.length === 0) {
+                showMessage("Nenhuma viagem aberta encontrada para finalizar.", 'error');
+                return;
+            }
+
+            const tripToFinish = openTrips[0];
             
-            if (fetchError || !activeTrip) {
-                alert('Nenhuma viagem ativa encontrada ou erro ao buscar.');
+            if (km_final < tripToFinish.km_inicial) {
+                showMessage(`A quilometragem final (${km_final.toFixed(2)} km) não pode ser menor que a inicial (${tripToFinish.km_inicial.toFixed(2)} km).`, 'error');
                 return;
             }
 
-            if (finalKm < activeTrip.initial_km) { 
-                alert('KM final deve ser maior que KM inicial.');
-                return;
-            }
-            
-            const updateData = {
-                final_km: finalKm, 
-                end_time: new Date().toISOString(), 
-                status: 'completed'
-            };
+            // 2. Atualizar a viagem
+            const { error: updateError } = await supabase
+                .from('viagens')
+                .update({
+                    km_final: km_final,
+                    data_fim: new Date().toISOString(),
+                    status: 'concluída'
+                })
+                .eq('id', tripToFinish.id);
 
-            const { error } = await supabase
-                .from('trips')
-                .update(updateData)
-                .eq('id', activeTrip.id);
-
-            if (error) {
-                alert('Erro ao finalizar viagem: ' + error.message);
+            if (updateError) {
+                showMessage(`Erro ao finalizar viagem: ${updateError.message}`, 'error');
                 return;
             }
 
-            document.getElementById('finalKm').value = '';
-            checkActiveTrip();
-            loadDriverTripHistory();
+            showMessage("Viagem finalizada com sucesso!", 'success');
+            document.getElementById('driver-km-final').value = '';
+            loadDriverTrips(driverId);
         }
 
-        async function loadDriverTripHistory() {
-            const historyDiv = document.getElementById('driverTripHistory');
-            historyDiv.innerHTML = '<p class="text-gray-500">Carregando histórico...</p>';
 
-            const { data: driverTrips, error } = await supabase
-                .from('trips')
-                .select('*')
-                .eq('driver_id', currentUser.id) // ID numérico/bigint
-                .eq('status', 'completed')
-                .order('end_time', { ascending: false }); 
-
-            if (error) {
-                historyDiv.innerHTML = `<p class="text-red-500">Erro ao carregar histórico: ${error.message}</p>`;
-                return;
-            }
-
-            if (driverTrips.length === 0) {
-                historyDiv.innerHTML = '<p class="text-gray-500">Nenhuma viagem concluída.</p>';
-                return;
-            }
-
-            historyDiv.innerHTML = '<div class="space-y-3"></div>';
-            const tripsContainer = historyDiv.querySelector('.space-y-3');
-
-            driverTrips.forEach(trip => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); 
-                const tripDiv = document.createElement('div');
-                tripDiv.className = 'p-4 bg-gray-50 rounded-lg';
-                tripDiv.innerHTML = `
-                    <h5 class="font-medium text-gray-900">${trip.destination}</h5>
-                    <p class="text-sm text-gray-500">${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'Veículo não encontrado'}</p>
-                    <p class="text-sm text-gray-500">Período: ${new Date(trip.start_time).toLocaleString('pt-BR')} - ${new Date(trip.end_time).toLocaleString('pt-BR')}</p>
-                    <p class="text-sm text-gray-500">Quilometragem: ${trip.initial_km} - ${trip.final_km} (${trip.final_km - trip.initial_km} km)</p>
-                `;
-                tripsContainer.appendChild(tripDiv);
-            });
+        // ------------------------------------------------------
+        // 🗙 MODAIS
+        // ------------------------------------------------------
+        function closeModal() {
+            document.getElementById('modal-backdrop').style.display = 'none';
         }
 
-        // **********************************************
-        // RELATÓRIOS SUPABASE (Usando snake_case para colunas)
-        // **********************************************
-
-        async function generateReport() {
-            const driverId = parseInt(document.getElementById('reportDriverSelect').value);
-            const period = parseInt(document.getElementById('reportPeriod').value);
-
-            if (!driverId) {
-                alert('Selecione um motorista.');
-                return;
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('modal-backdrop')) {
+                closeModal();
             }
-
-            const driver = drivers.find(d => d.id === driverId);
-            
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - period);
-            const cutoffISODate = cutoffDate.toISOString();
-
-            // 1. Busca as viagens no Supabase
-            const { data: driverTrips, error } = await supabase
-                .from('trips')
-                .select('*')
-                .eq('driver_id', driverId) // ID numérico/bigint
-                .eq('status', 'completed')
-                .gte('start_time', cutoffISODate) 
-                .order('start_time', { ascending: true }); 
-
-            if (error) {
-                alert('Erro ao buscar viagens para o relatório: ' + error.message);
-                return;
-            }
-
-            if (driverTrips.length === 0) {
-                alert('Nenhuma viagem encontrada no período selecionado.');
-                return;
-            }
-
-            // Generate PDF using jsPDF
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Header
-            doc.setFontSize(20);
-            doc.text('FleetControl - Relatório de Viagens', 20, 30);
-            
-            doc.setFontSize(12);
-            doc.text(`Motorista: ${driver.name}`, 20, 50);
-            doc.text(`Período: Últimos ${period} dias`, 20, 60);
-            doc.text(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, 20, 70);
-
-            // Trips table
-            let yPosition = 90;
-            doc.setFontSize(14);
-            doc.text('Viagens Realizadas:', 20, yPosition);
-            yPosition += 10;
-
-            doc.setFontSize(10);
-            driverTrips.forEach((trip, index) => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); 
-                const startDate = new Date(trip.start_time).toLocaleDateString('pt-BR'); 
-                const distance = trip.final_km - trip.initial_km; 
-
-                doc.text(`${index + 1}. ${trip.destination}`, 20, yPosition);
-                doc.text(`Veículo: ${vehicle ? vehicle.plate : 'N/A'}`, 30, yPosition + 8);
-                doc.text(`Data: ${startDate}`, 30, yPosition + 16);
-                doc.text(`Distância: ${distance} km`, 30, yPosition + 24);
-                
-                yPosition += 35;
-
-                // Add new page if needed
-                if (yPosition > 250) {
-                    doc.addPage();
-                    yPosition = 30;
-                }
-            });
-
-            // Summary
-            const totalDistance = driverTrips.reduce((sum, trip) => sum + (trip.final_km - trip.initial_km), 0); 
-            yPosition += 10;
-            doc.setFontSize(12);
-            doc.text(`Total de viagens: ${driverTrips.length}`, 20, yPosition);
-            doc.text(`Quilometragem total: ${totalDistance} km`, 20, yPosition + 10);
-
-            // Signature field
-            yPosition += 40;
-            doc.text('Assinatura: ________________________________', 20, yPosition);
-            doc.text('Data: ___/___/______', 20, yPosition + 20);
-
-            // Save PDF
-            doc.save(`relatorio_${driver.name.replace(/\s+/g, '_')}_${period}dias.pdf`);
         }
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('username').focus();
-        });
+    </script>
+    <script>
+        // Inicializa a aplicação ao carregar
+        initializeApp();
     </script>
 </body>
 </html>
-</body>
-</html>
-
-
