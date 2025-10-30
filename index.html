@@ -281,22 +281,25 @@
   <script>
     
         // **********************************************
-        // CONFIGURAÇÃO SUPABASE (CORRIGIDO PARA VAR)
+        // CONFIGURAÇÃO SUPABASE - CORREÇÃO DE INICIALIZAÇÃO
+        // O uso de 'window.supabase' garante que estamos usando 
+        // o objeto da biblioteca, resolvendo o ReferenceError.
         // **********************************************
-        // Trocamos 'const' por 'var' para evitar o erro 'Cannot access before initialization'
-        var SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
-        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
+        const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
 
-        // Criação do cliente Supabase usando a variável 'var' (globalmente disponível)
-        var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // CORREÇÃO: Usar 'window.supabase' para evitar conflito com 'const supabase'
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null; 
         let drivers = [];   
         let vehicles = [];  
         let trips = [];     
 
-        // ... (o restante do seu código permanece igual)
         // **********************************************
+        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA VIA SUPABASE AUTH + ROLE)
+        // ... O restante da função handleLogin e do seu script continua aqui.
+        // ... (Não mude o restante do seu código JavaScript)
         // INICIALIZAÇÃO, LOGOUT E FLUXO DE SESSÃO
         // **********************************************
 
