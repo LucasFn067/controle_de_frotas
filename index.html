@@ -279,19 +279,23 @@
     </div>
 
   <script>
+    
         // **********************************************
-        // CONFIGURAÇÃO SUPABASE
+        // CONFIGURAÇÃO SUPABASE (CORRIGIDO PARA VAR)
         // **********************************************
-        const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
+        // Trocamos 'const' por 'var' para evitar o erro 'Cannot access before initialization'
+        var SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
+        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Criação do cliente Supabase usando a variável 'var' (globalmente disponível)
+        var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null; 
         let drivers = [];   
         let vehicles = [];  
         let trips = [];     
 
+        // ... (o restante do seu código permanece igual)
         // **********************************************
         // INICIALIZAÇÃO, LOGOUT E FLUXO DE SESSÃO
         // **********************************************
