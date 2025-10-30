@@ -921,3 +921,90 @@
             let yPosition = 90;
             doc.setFontSize(14);
             doc.text('Viagens Realizadas:', 20, yPosition);
+            yPosition += 10;
+
+            doc.setFontSize(10);
+            driverTrips.forEach((trip, index) => {
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); // Corrigido para vehicle_id
+                const startDate = new Date(trip.start_time).toLocaleDateString('pt-BR'); // Corrigido para start_time
+                const distance = trip.final_km - trip.initial_km; // Corrigido para final_km, initial_km
+
+                doc.text(`${index + 1}. ${trip.destination}`, 20, yPosition);
+                doc.text(`Veículo: ${vehicle ? vehicle.plate : 'N/A'}`, 30, yPosition + 8);
+                doc.text(`Data: ${startDate}`, 30, yPosition + 16);
+                doc.text(`Distância: ${distance} km`, 30, yPosition + 24);
+                
+                yPosition += 35;
+
+                // Add new page if needed
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 30;
+                }
+            });
+
+            // Summary
+            const totalDistance = driverTrips.reduce((sum, trip) => sum + (trip.final_km - trip.initial_km), 0); // Corrigido para final_km, initial_km
+            yPosition += 10;
+            doc.setFontSize(12);
+            doc.text(`Total de viagens: ${driverTrips.length}`, 20, yPosition);
+            doc.text(`Quilometragem total: ${totalDistance} km`, 20, yPosition + 10);
+
+            // Signature field
+            yPosition += 40;
+            doc.text('Assinatura: ________________________________', 20, yPosition);
+            doc.text('Data: ___/___/______', 20, yPosition + 20);
+
+            // Save PDF
+            doc.save(`relatorio_${driver.name.replace(/\s+/g, '_')}_${period}dias.pdf`);
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('username').focus();
+            initApp(); // FUNÇÃO ADICIONADA PARA VERIFICAR SESSÃO ATIVA
+        });
+
+        // **********************************************
+        // INICIALIZAÇÃO E VERIFICAÇÃO DE SESSÃO
+        // **********************************************
+        async function initApp() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                const userUid = user.id;
+                // 2. Busca o perfil para determinar a role (Gestor ou Motorista)
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('full_name, role')
+                    .eq('id', userUid)
+                    .single();
+
+                if (profileError || !profileData) {
+                    // Se tem sessão, mas não tem perfil, força o logout e exibe a tela de login.
+                    await supabase.auth.signOut();
+                    return; 
+                }
+
+                // 3. Redireciona com base na ROLE
+                if (profileData.role === 'manager') {
+                    currentUser = { type: 'manager', id: userUid, name: profileData.full_name };
+                    showManagerDashboard();
+                } else if (profileData.role === 'driver') {
+                    const { data: driverInfo, error: driverInfoError } = await supabase
+                        .from('drivers')
+                        .select('id, name')
+                        .eq('auth_uid', userUid) 
+                        .single();
+
+                    if (driverInfo) {
+                        currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid };
+                        showDriverDashboard();
+                    }
+                }
+                // Se o usuário está logado, mas não foi identificado como manager/driver, ele fica na tela de login.
+            }
+        }
+    </script>
+</body>
+</html>
