@@ -322,8 +322,7 @@
                 .single();
 
             if (profileError || !profileData) {
-                // Este é o erro que ocorre se a RLS de SELECT na tabela profiles estiver errada (erro 500)
-                // ou se a política está correta, mas a linha não existe.
+                // ESTE É O ERRO QUE O RLS CORRIGIDO DEVE RESOLVER.
                 alert('Perfil não encontrado. O login foi bem-sucedido, mas o perfil não está configurado corretamente.');
                 await supabase.auth.signOut();
                 return;
