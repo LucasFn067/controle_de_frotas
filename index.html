@@ -278,7 +278,7 @@
         </main>
     </div>
 
-   <script>
+  <script>
         // **********************************************
         // CONFIGURAÇÃO SUPABASE
         // **********************************************
@@ -296,10 +296,10 @@
         // INICIALIZAÇÃO, LOGOUT E FLUXO DE SESSÃO
         // **********************************************
 
-        // 1. Função para carregar o perfil e redirecionar
         async function loadProfileAndRedirect(user) {
             const userUid = user.id;
 
+            // TENTA CARREGAR O PERFIL DO USUÁRIO LOGADO
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('full_name, role')
@@ -307,13 +307,17 @@
                 .single();
 
             if (profileError || !profileData) {
-                console.error("Erro ao buscar perfil (Verifique RLS e dados):", profileError);
-                // Se não encontrar perfil, força o logout para evitar loops
-                await supabase.auth.signOut();
-                alert('Perfil não encontrado. Sessão encerrada. Verifique o RLS ou o registro do perfil.');
+                // ERRO CRÍTICO AQUI: RLS ou Perfil Inexistente
+                console.error("ERRO CRÍTICO DE PERFIL/RLS AO BUSCAR GESTOR:", profileError);
+                console.error("Usuário ID que tentou buscar perfil:", userUid);
+                
+                // Força o log out para evitar sessão inválida
+                await supabase.auth.signOut(); 
+                alert('Erro: O login falhou na verificação do perfil do Gestor. Verifique o RLS da tabela "profiles" ou o registro do perfil (role: "manager"). Detalhes no console (F12).');
                 return;
             }
 
+            // REDIRECIONAMENTO COM BASE NA ROLE ENCONTRADA
             if (profileData.role === 'manager') {
                 currentUser = { type: 'manager', id: userUid, name: profileData.full_name };
                 showManagerDashboard();
@@ -328,40 +332,43 @@
                     currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid };
                     showDriverDashboard();
                 } else {
-                    alert('Perfil de motorista ativo, mas ID interno não encontrado.');
+                    // Motorista sem registro na tabela 'drivers', força logout
+                    alert('Perfil de motorista ativo, mas ID interno não encontrado. Causa provável: Trigger falhou.');
                     await supabase.auth.signOut();
                 }
+            } else {
+                 // Role desconhecida, força logout
+                alert(`Função ("role") desconhecida: ${profileData.role}. Sessão encerrada.`);
+                await supabase.auth.signOut();
             }
         }
 
-        // 2. Função de Login acionada pelo formulário
         async function handleLogin(event) {
             event.preventDefault();
             const email = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // Tenta autenticar
             const { error: authError } = await supabase.auth.signInWithPassword({
                 email: email, 
                 password: password,
             });
             
             if (authError) {
-                alert('Erro de login: Usuário ou senha incorretos, ou e-mail não confirmado.');
+                // Log de erro de autenticação (usuário/senha errados, email não confirmado)
+                alert('Erro de login: Usuário ou senha incorretos, ou e-mail não confirmado. Detalhes no console.');
+                console.error("Erro no signInWithPassword:", authError);
                 return;
             }
 
-            // O redirecionamento real agora é feito pelo onAuthStateChange (Passo 3)
+            // O redirecionamento será feito pelo listener onAuthStateChange
         }
 
-        // 3. Listener principal do Supabase
+        // Listener principal do Supabase: Garante que a sessão é tratada corretamente.
         supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
-                // Usuário acabou de logar ou já estava logado.
                 document.getElementById('loginScreen').classList.add('hidden');
                 loadProfileAndRedirect(session.user);
             } else if (event === 'SIGNED_OUT') {
-                // Usuário deslogou. Exibe a tela de login.
                 document.getElementById('loginScreen').classList.remove('hidden');
                 document.getElementById('managerDashboard').classList.add('hidden');
                 document.getElementById('driverDashboard').classList.add('hidden');
@@ -371,7 +378,6 @@
 
         async function logout() {
             await supabase.auth.signOut(); 
-            // O listener acima cuida do resto do reset da tela.
         }
 
         function showManagerDashboard() {
@@ -421,13 +427,15 @@
             const driversList = document.getElementById('driversList');
             driversList.innerHTML = '<p class="text-gray-500">Carregando motoristas...</p>';
 
+            // ESTA CHAMADA REQUER A POLÍTICA RLS PARA GESTOR
             const { data, error } = await supabase
                 .from('drivers')
                 .select('id, name, username, auth_uid')
                 .order('name', { ascending: true });
 
             if (error) {
-                driversList.innerHTML = `<p class="text-red-500">Erro ao carregar motoristas: ${error.message}</p>`;
+                // Se esta falhar, a política RLS na tabela 'drivers' está errada para o gestor
+                driversList.innerHTML = `<p class="text-red-500">Erro ao carregar motoristas (RLS 'drivers'): ${error.message}</p>`;
                 return;
             }
             
@@ -482,13 +490,15 @@
             const vehiclesList = document.getElementById('vehiclesList');
             vehiclesList.innerHTML = '<p class="text-gray-500">Carregando veículos...</p>';
 
+            // ESTA CHAMADA REQUER A POLÍTICA RLS PARA GESTOR
             const { data, error } = await supabase
                 .from('vehicles')
                 .select('*')
                 .order('plate', { ascending: true });
 
             if (error) {
-                vehiclesList.innerHTML = `<p class="text-red-500">Erro ao carregar veículos: ${error.message}</p>`;
+                 // Se esta falhar, a política RLS na tabela 'vehicles' está errada para o gestor
+                vehiclesList.innerHTML = `<p class="text-red-500">Erro ao carregar veículos (RLS 'vehicles'): ${error.message}</p>`;
                 return;
             }
             
@@ -595,6 +605,7 @@
 
             tripsList.innerHTML = '<p class="text-gray-500">Carregando viagens...</p>';
             
+            // ESTA CHAMADA REQUER A POLÍTICA RLS PARA GESTOR
             const { data, error } = await supabase
                 .from('trips')
                 .select('*')
@@ -602,7 +613,7 @@
                 .order('start_time', { ascending: false }); 
 
             if (error) {
-                tripsList.innerHTML = `<p class="text-red-500">Erro ao carregar viagens: ${error.message}</p>`;
+                tripsList.innerHTML = `<p class="text-red-500">Erro ao carregar viagens (RLS 'trips'): ${error.message}</p>`;
                 return;
             }
 
@@ -932,7 +943,6 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('username').focus();
-            // O initApp anterior foi substituído pelo listener onAuthStateChange do Supabase
         });
         
         // Funções placeholders
