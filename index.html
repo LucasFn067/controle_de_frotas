@@ -11,7 +11,6 @@
         body {
             box-sizing: border-box;
         }
-        /* Definições de cores mantidas */
         .bg-primary { background-color: #6B8E23; }
         .bg-primary-light { background-color: #8FBC8F; }
         .bg-primary-dark { background-color: #556B2F; }
@@ -281,23 +280,12 @@
 
     <script>
         // **********************************************
-        // CONFIGURAÇÃO SUPABASE (AS CHAVES FORAM MANTIDAS)
+        // CONFIGURAÇÃO SUPABASE
         // **********************************************
         const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
 
-        // CRIAÇÃO DO CLIENTE SUPABASE (USANDO O GLOBAL 'window.supabase')
-        if (typeof window.supabase !== 'undefined') {
-             var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } else {
-             console.error("Erro: A biblioteca Supabase não foi carregada. Verifique a CDN.");
-             // Tenta criar o cliente da forma original como fallback
-             try {
-                var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-             } catch (e) {
-                console.error("Falha total na inicialização do Supabase:", e);
-             }
-        }
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null; 
         let drivers = [];   
@@ -305,67 +293,57 @@
         let trips = [];     
 
         // **********************************************
-        // FUNÇÃO DE AUTENTICAÇÃO E ROLE CHECK (CORRIGIDA PARA TABELA ÚNICA)
+        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA VIA SUPABASE AUTH + DRIVERS UNIFICADA)
         // **********************************************
 
         async function handleLogin(event) {
-            // Previne o recarregamento da página
-            event.preventDefault(); 
-            
+            event.preventDefault();
             const email = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // 1. Tenta autenticar via Supabase Auth
+            // 1. Tenta autenticar via Supabase Auth (válido para Gestor e Motorista)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email, 
                 password: password,
             });
             
             if (authError) {
-                // Falha de credencial ou usuário não confirmado
                 alert('Erro de login: Usuário ou senha incorretos, ou e-mail não confirmado.');
                 return;
             }
 
-            if (!authData.user) {
-                alert('Erro desconhecido na autenticação. Tente novamente.');
-                return;
-            }
-            
-            // 2. Busca o perfil e a role na tabela 'drivers' unificada
+            // 2. Busca o perfil (agora unificado na tabela 'drivers') para determinar a role e o ID numérico
             const userUid = authData.user.id;
             const { data: driverInfo, error: driverInfoError } = await supabase
                 .from('drivers')
-                .select('id, name, role') // Puxa ID (numérico), nome e role
+                .select('id, name, role') // Seleciona o ID numérico, nome e role
                 .eq('auth_uid', userUid) // Usa o UUID de Auth como chave de busca
                 .single();
 
             if (driverInfoError || !driverInfo) {
-                // Se cair aqui, a RLS de SELECT na tabela drivers ou o trigger falhou
-                alert('Erro de perfil. O login foi bem-sucedido, mas o perfil não está configurado. Verifique o RLS da tabela drivers ou se o usuário foi criado corretamente no Table Editor.');
+                // Este erro agora refere-se a problemas de RLS na tabela drivers ou falha na criação do registro pelo trigger.
+                alert('Erro de perfil. O login foi bem-sucedido, mas o perfil não está configurado corretamente. Verifique o RLS da tabela drivers ou se o usuário foi criado corretamente no Table Editor.');
                 await supabase.auth.signOut();
                 return;
             }
 
             // 3. Redireciona com base na ROLE
             if (driverInfo.role === 'manager') {
-                currentUser = { type: 'manager', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid, role: driverInfo.role };
+                // currentUser.id é o ID numérico da tabela drivers
+                currentUser = { type: 'manager', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid }; 
                 showManagerDashboard();
             } else if (driverInfo.role === 'driver') {
-                currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid, role: driverInfo.role };
-                showDriverDashboard();
+                 // currentUser.id é o ID numérico da tabela drivers
+                 currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid };
+                 showDriverDashboard();
             } else {
-                alert('Função (role) de usuário desconhecida. Por favor, contate o administrador.');
-                await supabase.auth.signOut();
+                 alert('Role de usuário desconhecida. Favor contatar o administrador.');
+                 await supabase.auth.signOut();
             }
         }
 
         async function logout() {
-            const { error } = await supabase.auth.signOut(); 
-            
-            if (error) {
-                console.error("Erro ao deslogar:", error);
-            }
+            await supabase.auth.signOut(); 
             
             currentUser = null;
             document.getElementById('loginScreen').classList.remove('hidden');
@@ -377,27 +355,20 @@
 
         function showManagerDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('driverDashboard').classList.add('hidden');
             document.getElementById('managerDashboard').classList.remove('hidden');
-            
-            // Carrega dados no dashboard do Gestor
             showTab('drivers');
             loadDriversData();
-            loadVehiclesData(); 
+            loadVehiclesData();
         }
 
         async function showDriverDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('managerDashboard').classList.add('hidden');
             document.getElementById('driverDashboard').classList.remove('hidden');
-
             await loadVehiclesData(); 
             loadDriverVehicles();
             checkActiveTrip();
             loadDriverTripHistory();
         }
-
-        // --- FUNÇÕES DE DASHBOARD --- (Mantidas, mas corrigidas para snake_case)
 
         // Tab Management
         function showTab(tabName) {
@@ -424,17 +395,17 @@
         }
 
         // **********************************************
-        // GESTÃO DE MOTORISTAS SUPABASE (snake_case)
+        // GESTÃO DE MOTORISTAS SUPABASE (Ajustada para RLS e Auth)
         // **********************************************
 
         async function loadDriversData() {
             const driversList = document.getElementById('driversList');
             driversList.innerHTML = '<p class="text-gray-500">Carregando motoristas...</p>';
 
-            // Select todos os campos, incluindo a role unificada
+            // Busca na tabela drivers, que agora contém as roles
             const { data, error } = await supabase
                 .from('drivers')
-                .select('id, name, username, auth_uid, role')
+                .select('id, name, username, auth_uid')
                 .order('name', { ascending: true });
 
             if (error) {
@@ -452,55 +423,58 @@
             }
             
             drivers.forEach(driver => {
-                // Não permite excluir o próprio gestor ou usuários com role 'manager'
-                const isManager = driver.role === 'manager';
-                const canDelete = !isManager; 
-
                 const driverDiv = document.createElement('div');
                 driverDiv.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
                 driverDiv.innerHTML = `
                     <div>
                         <h5 class="font-medium text-gray-900">${driver.name}</h5>
-                        <p class="text-sm text-gray-500">Usuário: ${driver.username} | Função: <strong>${driver.role.toUpperCase()}</strong></p>
+                        <p class="text-sm text-gray-500">Usuário: ${driver.username}</p>
                     </div>
                     <div class="flex space-x-2">
                         <button onclick="changeDriverPassword('${driver.auth_uid}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
                             Alterar Senha
                         </button>
-                        ${canDelete ? `
-                            <button onclick="deleteDriver('${driver.auth_uid}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
-                                Excluir
-                            </button>
-                        ` : `
-                            <button disabled class="bg-gray-400 text-white px-3 py-1 rounded text-sm cursor-not-allowed">
-                                Gerente
-                            </button>
-                        `}
+                        <button onclick="deleteDriver('${driver.auth_uid}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                            Excluir
+                        </button>
                     </div>
                 `;
                 driversList.appendChild(driverDiv);
             });
         }
 
-        // Função de alteração de senha (Mantida)
+        async function addDriver(event) {
+            event.preventDefault();
+            alert('Motoristas devem ser criados/convidados diretamente no Painel de Autenticação do Supabase (Authentication -> Users). O RLS e os Triggers se encarregam de criar o perfil no banco de dados.');
+        }
+
+        // Função de alteração de senha atualizada para usar o Supabase Auth (Apenas placeholder, requer Admin)
         async function changeDriverPassword(driverAuthUid) {
             alert('A alteração de senha de outro usuário (Gestor para Motorista) requer uma Função de Administrador ou Edge Function do Supabase (Admin API). \n\nPara o front-end, o motorista deve usar o fluxo de "esqueci minha senha" do Supabase Auth, que envia um e-mail de redefinição.');
         }
 
-        // Função de exclusão (Mantida, mas agora só exclui o registro unificado 'drivers')
+        // Função de exclusão atualizada para excluir do Auth
         async function deleteDriver(driverAuthUid) {
             if (confirm('Tem certeza que deseja excluir este motorista? O usuário Auth, o registro Driver e todas as Viagens (trips) dele serão removidos.')) {
                 
-                // Excluir o registro da tabela drivers. O RLS/SQL está configurado para que a exclusão do drivers 
-                // faça o CASCADE para auth.users e trips.
-                const { error: driverError } = await supabase
-                    .from('drivers')
-                    .delete()
-                    .eq('auth_uid', driverAuthUid);
+                // Excluir o usuário do Auth. Isso disparará o CASCADE no SQL
+                // para a tabela 'drivers' e consequentemente 'trips'.
+                const { error: authError } = await supabase.rpc('delete_user_by_id', { user_id: driverAuthUid });
 
-                if (driverError) {
-                    alert('Erro ao excluir usuário: ' + driverError.message);
-                    return;
+                if (authError) {
+                    // O rpc 'delete_user_by_id' é necessário para que um usuário não-administrador
+                    // (que é a role do front-end) possa excluir outro usuário. Se você não 
+                    // criou essa função RPC, o erro abaixo ocorrerá. 
+                    // Para fins práticos neste exemplo, faremos a exclusão no Auth por enquanto:
+                     const { error: finalAuthError } = await supabase.auth.admin.deleteUser(driverAuthUid);
+                    
+                    if (finalAuthError) {
+                        alert('Erro ao excluir usuário Auth: É necessário usar o Auth Admin API ou a função RPC "delete_user_by_id" com a chave "service_role" no backend. Para testes, exclua manualmente em "Authentication -> Users"');
+                        return;
+                    }
+
+                    // Se a exclusão do Auth funcionar, o CASCADE cuida do resto.
+                    
                 }
                 
                 loadDriversData();
@@ -508,7 +482,7 @@
         }
 
         // **********************************************
-        // GESTÃO DE VEÍCULOS SUPABASE (Mantida)
+        // GESTÃO DE VEÍCULOS SUPABASE (Usando snake_case para colunas)
         // **********************************************
 
         async function loadVehiclesData() {
@@ -525,7 +499,8 @@
                 return;
             }
             
-            vehicles = data; 
+            vehicles = data; // Atualiza a lista global
+
             vehiclesList.innerHTML = '';
             if (vehicles.length === 0) {
                 vehiclesList.innerHTML = '<p class="text-gray-500">Nenhum veículo cadastrado.</p>';
@@ -546,14 +521,22 @@
                 `;
                 vehiclesList.appendChild(vehicleDiv);
             });
-
-            return data;
         }
 
         async function addVehicle(event) {
             event.preventDefault();
             const plate = document.getElementById('vehiclePlate').value;
             const model = document.getElementById('vehicleModel').value;
+
+            const { data: existing } = await supabase
+                .from('vehicles')
+                .select('id')
+                .eq('plate', plate);
+
+            if (existing && existing.length > 0) {
+                alert('Placa já cadastrada!');
+                return;
+            }
 
             const newVehicle = {
                 plate: plate,
@@ -591,19 +574,19 @@
         }
 
         // **********************************************
-        // GESTÃO DE VIAGENS E RELATÓRIOS (Mantida)
+        // GESTÃO DE VIAGENS - GESTOR SUPABASE (Usando snake_case para colunas)
         // **********************************************
         
         function updateDriverSelects() {
             const selects = ['tripDriverSelect', 'reportDriverSelect'];
             selects.forEach(selectId => {
                 const select = document.getElementById(selectId);
+                // Preserve the first option (placeholder)
                 const optionsToKeep = select.querySelector('option[value=""]'); 
                 select.innerHTML = '';
                 if (optionsToKeep) select.appendChild(optionsToKeep);
 
-                // Filtra para mostrar apenas drivers, não managers (que já estão na lista drivers)
-                drivers.filter(d => d.role === 'driver').forEach(driver => {
+                drivers.forEach(driver => {
                     const option = document.createElement('option');
                     option.value = driver.id; // ID Numérico
                     option.textContent = driver.name;
@@ -611,12 +594,6 @@
                 });
             });
         }
-
-        // As funções loadDriverTrips, deleteTrip, clearAllTrips, loadDriverVehicles, 
-        // checkActiveTrip, startTrip, finishTrip, loadDriverTripHistory e generateReport
-        // foram mantidas intactas pois o problema do snake_case já foi resolvido e
-        // elas dependem do 'currentUser.id' (numérico) que agora vem corretamente do
-        // novo bloco 'handleLogin'.
 
         async function loadDriverTrips() {
             const driverId = parseInt(document.getElementById('tripDriverSelect').value);
@@ -633,15 +610,15 @@
             const { data, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driver_id', driverId)
-                .order('start_time', { ascending: false });
+                .eq('driver_id', driverId) 
+                .order('start_time', { ascending: false }); 
 
             if (error) {
                 tripsList.innerHTML = `<p class="text-red-500">Erro ao carregar viagens: ${error.message}</p>`;
                 return;
             }
 
-            trips = data; 
+            trips = data; // Atualiza lista global
             tripsActions.classList.remove('hidden');
 
             if (trips.length === 0) {
@@ -653,7 +630,7 @@
             const tripsContainer = tripsList.querySelector('.space-y-3');
 
             trips.forEach(trip => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicle_id);
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); 
                 const tripDiv = document.createElement('div');
                 tripDiv.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
                 
@@ -704,7 +681,7 @@
                 const { error } = await supabase
                     .from('trips')
                     .delete()
-                    .eq('driver_id', driverId);
+                    .eq('driver_id', driverId); 
 
                 if (error) {
                     alert('Erro ao zerar viagens: ' + error.message);
@@ -714,7 +691,11 @@
                 loadDriverTrips();
             }
         }
-        
+
+        // **********************************************
+        // GESTÃO DE VIAGENS - MOTORISTA SUPABASE (Usando snake_case para colunas)
+        // **********************************************
+
         function loadDriverVehicles() {
             const select = document.getElementById('tripVehicle');
             const optionsToKeep = select.querySelector('option[value=""]');
@@ -733,6 +714,7 @@
             const activeTripSection = document.getElementById('activeTripSection');
             const newTripSection = document.getElementById('newTripSection');
 
+            // Verifica se o currentUser está definido e é um motorista
             if (!currentUser || currentUser.type !== 'driver') {
                  activeTripSection.classList.add('hidden');
                  newTripSection.classList.add('hidden'); 
@@ -742,18 +724,18 @@
             const { data: activeTrip, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driver_id', currentUser.id)
+                .eq('driver_id', currentUser.id) 
                 .eq('status', 'active')
                 .single(); 
 
-            if (error && error.code !== 'PGRST116') { 
+            if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha (OK)
                 console.error('Erro ao buscar viagem ativa:', error.message);
                 activeTripSection.classList.add('hidden');
                 newTripSection.classList.remove('hidden');
             }
 
             if (activeTrip) {
-                const vehicle = vehicles.find(v => v.id === activeTrip.vehicle_id);
+                const vehicle = vehicles.find(v => v.id === activeTrip.vehicle_id); 
                 document.getElementById('activeTripDetails').innerHTML = `
                     <p><strong>Destino:</strong> ${activeTrip.destination}</p>
                     <p><strong>Veículo:</strong> ${vehicle ? vehicle.plate + ' - ' + vehicle.model : 'N/A'}</p>
@@ -775,11 +757,11 @@
             const initialKm = parseInt(document.getElementById('initialKm').value);
 
             const newTrip = {
-                driver_id: currentUser.id,
+                driver_id: currentUser.id, 
                 destination: destination,
-                vehicle_id: vehicleId,
-                initial_km: initialKm,
-                start_time: new Date().toISOString(),
+                vehicle_id: vehicleId, 
+                initial_km: initialKm, 
+                start_time: new Date().toISOString(), 
                 status: 'active'
             };
 
@@ -810,7 +792,7 @@
             const { data: activeTrip, error: fetchError } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driver_id', currentUser.id)
+                .eq('driver_id', currentUser.id) 
                 .eq('status', 'active')
                 .single();
             
@@ -819,14 +801,14 @@
                 return;
             }
 
-            if (finalKm < activeTrip.initial_km) {
+            if (finalKm < activeTrip.initial_km) { 
                 alert('KM final deve ser maior que KM inicial.');
                 return;
             }
             
             const updateData = {
-                final_km: finalKm,
-                end_time: new Date().toISOString(),
+                final_km: finalKm, 
+                end_time: new Date().toISOString(), 
                 status: 'completed'
             };
 
@@ -852,9 +834,9 @@
             const { data: driverTrips, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driver_id', currentUser.id)
+                .eq('driver_id', currentUser.id) 
                 .eq('status', 'completed')
-                .order('end_time', { ascending: false });
+                .order('end_time', { ascending: false }); 
 
             if (error) {
                 historyDiv.innerHTML = `<p class="text-red-500">Erro ao carregar histórico: ${error.message}</p>`;
@@ -870,7 +852,7 @@
             const tripsContainer = historyDiv.querySelector('.space-y-3');
 
             driverTrips.forEach(trip => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicle_id);
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); 
                 const tripDiv = document.createElement('div');
                 tripDiv.className = 'p-4 bg-gray-50 rounded-lg';
                 tripDiv.innerHTML = `
@@ -882,6 +864,10 @@
                 tripsContainer.appendChild(tripDiv);
             });
         }
+
+        // **********************************************
+        // RELATÓRIOS SUPABASE (Usando snake_case para colunas)
+        // **********************************************
 
         async function generateReport() {
             const driverId = parseInt(document.getElementById('reportDriverSelect').value);
@@ -898,13 +884,14 @@
             cutoffDate.setDate(cutoffDate.getDate() - period);
             const cutoffISODate = cutoffDate.toISOString();
 
+            // 1. Busca as viagens no Supabase
             const { data: driverTrips, error } = await supabase
                 .from('trips')
                 .select('*')
-                .eq('driver_id', driverId)
+                .eq('driver_id', driverId) 
                 .eq('status', 'completed')
-                .gte('start_time', cutoffISODate)
-                .order('start_time', { ascending: true });
+                .gte('start_time', cutoffISODate) 
+                .order('start_time', { ascending: true }); 
 
             if (error) {
                 alert('Erro ao buscar viagens para o relatório: ' + error.message);
@@ -937,9 +924,9 @@
 
             doc.setFontSize(10);
             driverTrips.forEach((trip, index) => {
-                const vehicle = vehicles.find(v => v.id === trip.vehicle_id);
-                const startDate = new Date(trip.start_time).toLocaleDateString('pt-BR');
-                const distance = trip.final_km - trip.initial_km;
+                const vehicle = vehicles.find(v => v.id === trip.vehicle_id); 
+                const startDate = new Date(trip.start_time).toLocaleDateString('pt-BR'); 
+                const distance = trip.final_km - trip.initial_km; 
 
                 doc.text(`${index + 1}. ${trip.destination}`, 20, yPosition);
                 doc.text(`Veículo: ${vehicle ? vehicle.plate : 'N/A'}`, 30, yPosition + 8);
@@ -956,7 +943,7 @@
             });
 
             // Summary
-            const totalDistance = driverTrips.reduce((sum, trip) => sum + (trip.final_km - trip.initial_km), 0);
+            const totalDistance = driverTrips.reduce((sum, trip) => sum + (trip.final_km - trip.initial_km), 0); 
             yPosition += 10;
             doc.setFontSize(12);
             doc.text(`Total de viagens: ${driverTrips.length}`, 20, yPosition);
@@ -973,31 +960,6 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Tenta obter a sessão do usuário se ele recarregou a página
-            supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session) {
-                    // Se houver sessão, checa a role e redireciona (Consulta agora feita na tabela drivers)
-                    supabase
-                        .from('drivers')
-                        .select('id, name, role')
-                        .eq('auth_uid', session.user.id)
-                        .single()
-                        .then(({ data: driverInfo }) => {
-                            if (driverInfo) {
-                                currentUser = { type: driverInfo.role, id: driverInfo.id, name: driverInfo.name, auth_uid: session.user.id, role: driverInfo.role };
-                                if (driverInfo.role === 'manager') {
-                                    showManagerDashboard();
-                                } else if (driverInfo.role === 'driver') {
-                                    showDriverDashboard();
-                                }
-                            } else {
-                                // Se o driverInfo não for encontrado (RLS ou trigger falhou), desloga.
-                                supabase.auth.signOut();
-                            }
-                        });
-                }
-            });
-
             document.getElementById('username').focus();
         });
     </script>
