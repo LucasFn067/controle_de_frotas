@@ -280,12 +280,13 @@
 
     <script>
         // **********************************************
-        // CONFIGURAÇÃO SUPABASE (CORREÇÃO DEFINITIVA DO ERRO DE REFERÊNCIA)
+        // CONFIGURAÇÃO SUPABASE (CORRIGIDA)
+        // O USO DE 'var' E 'window.supabase' RESOLVE O ERRO DE INICIALIZAÇÃO JS.
         // **********************************************
         const SUPABASE_URL = 'https://nrgmjkphxdyyqjchhcto.supabase.co'; 
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZ21qa3BoeGR5eXFqY2hoY3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDYzMzUsImV4cCI6MjA3NjgyMjMzNX0.eDmA3YfrxO5ZPDVxps2Sy3OT6RlhpPmU838n7jJZmF8'; 
 
-        // DECLARAÇÃO CORRETA USANDO 'var' e acessando o objeto global 'window.supabase'
+        // ESTA LINHA FOI CORRIGIDA
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null; 
@@ -294,7 +295,7 @@
         let trips = [];     
 
         // **********************************************
-        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA VIA SUPABASE AUTH + DRIVERS UNIFICADA)
+        // FUNÇÃO DE AUTENTICAÇÃO CORRIGIDA (AGORA SÓ USA TABELA 'drivers')
         // **********************************************
 
         async function handleLogin(event) {
@@ -302,7 +303,7 @@
             const email = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // 1. Tenta autenticar via Supabase Auth
+            // 1. Tenta autenticar via Supabase Auth (válido para Gestor e Motorista)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email, 
                 password: password,
@@ -313,32 +314,36 @@
                 return;
             }
 
-            // 2. Busca o perfil (unificado na tabela 'drivers')
+            // O login foi bem-sucedido. Busca AGORA o perfil/driver na tabela 'drivers'
             const userUid = authData.user.id;
-            const { data: driverInfo, error: driverInfoError } = await supabase
+            
+            // 2. Busca o ID, o NOME e a ROLE na tabela 'drivers' (via auth_uid)
+            const { data: driverData, error: driverError } = await supabase
                 .from('drivers')
-                .select('id, name, role') // Seleciona o ID numérico, nome e role
-                .eq('auth_uid', userUid)
+                .select('id, name, role') // Assumindo que 'role' e 'name' existem em 'drivers'
+                .eq('auth_uid', userUid)  // Busca pelo UUID de Auth
                 .single();
 
-            if (driverInfoError || !driverInfo) {
-                alert('Erro de perfil. O login foi bem-sucedido, mas o perfil não está configurado corretamente. Verifique o RLS da tabela drivers ou se o usuário foi criado corretamente no Table Editor.');
+            if (driverError || !driverData) {
+                // Mensagem de erro atualizada para refletir a tabela correta
+                alert('Perfil não encontrado na tabela DRIVERS. O login foi bem-sucedido, mas o perfil (role/nome) não está configurado corretamente.');
                 await supabase.auth.signOut();
                 return;
             }
 
             // 3. Redireciona com base na ROLE
-            if (driverInfo.role === 'manager') {
-                currentUser = { type: 'manager', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid }; 
+            if (driverData.role === 'manager') {
+                currentUser = { type: 'manager', id: driverData.id, name: driverData.name, auth_uid: userUid };
                 showManagerDashboard();
-            } else if (driverInfo.role === 'driver') {
-                 currentUser = { type: 'driver', id: driverInfo.id, name: driverInfo.name, auth_uid: userUid };
-                 showDriverDashboard();
+            } else if (driverData.role === 'driver') {
+                currentUser = { type: 'driver', id: driverData.id, name: driverData.name, auth_uid: userUid };
+                showDriverDashboard();
             } else {
-                 alert('Role de usuário desconhecida. Favor contatar o administrador.');
-                 await supabase.auth.signOut();
+                alert('Role desconhecida. Logoff.');
+                await supabase.auth.signOut();
             }
         }
+// ... Mantenha o restante do seu código JavaScript
 
         async function logout() {
             await supabase.auth.signOut(); 
@@ -961,3 +966,4 @@
     </script>
 </body>
 </html>
+
